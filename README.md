@@ -2,6 +2,8 @@
 
 ## Getting started
 
+To host the dev server at http://localhost:1234/
+
 ```bash
 ./build
 ./run npm run start
