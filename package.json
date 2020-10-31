@@ -1,0 +1,19 @@
+{
+  "name": "unnamedgame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel src/index.html --port 1234 --hmr-port 12345",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "parcel-bundler": "^1.12.4",
+    "phaser": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.5"
+  }
+}
