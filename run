@@ -20,7 +20,7 @@ def docker(*cmd, ports=()):
     sh("docker", "run", "--rm", "--interactive", "--tty",
         "--volume", f"{os.getcwd()}:/work", "--workdir", "/work",
         "--user", f"{os.getuid()}:{os.getgid()}",
-        *(arg for port in ports for arg in ["--publish", str(port)]),
+        *(arg for port in ports for arg in ["--publish", f"{port}:{port}"]),
         IMAGE, *cmd)
 
 
@@ -37,8 +37,18 @@ def npm(cmd):
 
 
 def tsc(watch):
-    args = ["-w"] if watch else []
+    args = ["--watch"] if watch else []
     docker("npm", "run", "tsc", "--", *args)
+
+
+def test(watch):
+    args = ["--watch"] if watch else []
+    docker("npm", "run", "test", "--", *args)
+
+
+def check():
+    tsc(watch=False)
+    test(watch=False)
 
 
 def start():
@@ -64,6 +74,11 @@ def main():
     p.add_argument("-w", "--watch", action="store_true", help="Watch input files")
     p.set_defaults(action=tsc)
 
+    p = subparsers.add_parser("test")
+    p.add_argument("-w", "--watch", action="store_true", help="Watch input files")
+    p.set_defaults(action=test)
+
+    subparsers.add_parser("check").set_defaults(action=check)
     subparsers.add_parser("start").set_defaults(action=start)
 
     args = vars(parser.parse_args())
