@@ -1,2 +1,75 @@
-docker run --rm -it -v "$(pwd):/work" -p 1234:1234 -p 12345:12345 -w /work -u "$(id -u ${USER}):$(id -g ${USER})" \
-  unnamedgame "${@}"
+#!/usr/bin/env python3
+
+"""Build/dev runner for our game."""
+
+import argparse
+import os
+import subprocess
+import sys
+
+
+IMAGE = "unnamedgame"
+
+
+def sh(*cmd):
+    if subprocess.call(cmd):
+        sys.exit(1)
+
+
+def docker(*cmd, ports=()):
+    sh("docker", "run", "--rm", "--interactive", "--tty",
+        "--volume", f"{os.getcwd()}:/work", "--workdir", "/work",
+        "--user", f"{os.getuid()}:{os.getgid()}",
+        *(arg for port in ports for arg in ["--publish", str(port)]),
+        IMAGE, *cmd)
+
+
+def build():
+    sh("docker", "build", "--rm", "-t", IMAGE, ".")
+
+
+def run(cmd):
+    docker(*cmd)
+
+
+def npm(cmd):
+    docker("npm", *cmd)
+
+
+def tsc(watch):
+    args = ["-w"] if watch else []
+    docker("npm", "run", "tsc", "--", *args)
+
+
+def start():
+    docker("npm", "run", "start", ports=(1234, 12345))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.set_defaults(action=lambda: parser.print_help())
+    subparsers = parser.add_subparsers()
+
+    subparsers.add_parser("build").set_defaults(action=build)
+
+    p = subparsers.add_parser("run")
+    p.add_argument("cmd", nargs="*")
+    p.set_defaults(action=run)
+
+    p = subparsers.add_parser("npm")
+    p.add_argument("cmd", nargs="*")
+    p.set_defaults(action=npm)
+
+    p = subparsers.add_parser("tsc")
+    p.add_argument("-w", "--watch", action="store_true", help="Watch input files")
+    p.set_defaults(action=tsc)
+
+    subparsers.add_parser("start").set_defaults(action=start)
+
+    args = vars(parser.parse_args())
+    action = args.pop("action")
+    action(**args)
+
+
+if __name__ == "__main__":
+    main()

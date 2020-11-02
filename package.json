@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "parcel src/index.html --port 1234 --hmr-port 12345",
+    "tsc": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
