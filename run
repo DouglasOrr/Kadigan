@@ -17,8 +17,9 @@ def sh(*cmd):
 
 
 def docker(*cmd, ports=()):
+    cwd = os.getcwd()
     sh("docker", "run", "--rm", "--interactive", "--tty",
-        "--volume", f"{os.getcwd()}:/work", "--workdir", "/work",
+        "--volume", f"{cwd}:{cwd}", "--workdir", cwd,
         "--user", f"{os.getuid()}:{os.getgid()}",
         *(arg for port in ports for arg in ["--publish", f"{port}:{port}"]),
         IMAGE, *cmd)
@@ -46,9 +47,14 @@ def test(watch):
     docker("npm", "run", "test", "--", *args)
 
 
+def lint():
+    docker("npm", "run", "lint")
+
+
 def check():
     tsc(watch=False)
     test(watch=False)
+    lint()
 
 
 def start():
@@ -78,6 +84,7 @@ def main():
     p.add_argument("-w", "--watch", action="store_true", help="Watch input files")
     p.set_defaults(action=test)
 
+    subparsers.add_parser("lint").set_defaults(action=lint)
     subparsers.add_parser("check").set_defaults(action=check)
     subparsers.add_parser("start").set_defaults(action=start)
 
