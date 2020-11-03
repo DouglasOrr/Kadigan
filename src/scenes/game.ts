@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import Phaser from "phaser";
 
 export default class GameScene extends Phaser.Scene {
     create(): void {
