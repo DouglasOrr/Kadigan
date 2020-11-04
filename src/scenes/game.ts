@@ -1,8 +1,22 @@
 import Phaser from "phaser";
 
+class Ship extends Phaser.GameObjects.Sprite {
+    selected: boolean;
+
+    constructor(scene, x, y) {
+        super(scene, x, y, "ship");
+        this.setScale(0.25, 0.25);
+        this.selected = false;
+    }
+    select(selected: boolean) {
+        this.setTint(selected ? 0xffff00 : 0xffffff);
+        this.selected = selected;
+    }
+}
+
 export default class GameScene extends Phaser.Scene {
     target: Phaser.Math.Vector2;
-    ship: Phaser.GameObjects.Sprite;
+    ship: Ship;
 
     constructor() {
         super("game");
@@ -13,24 +27,22 @@ export default class GameScene extends Phaser.Scene {
         this.load.image("ship", "/assets/ship0.png");
     }
     create(): void {
-        this.ship = this.add.sprite(100, 200, "ship");
-        this.ship.setScale(0.25, 0.25);
+        this.ship = new Ship(this, 100, 200);
+        this.add.existing(this.ship);
         this.physics.add.existing(this.ship, false);
 
         this.input.on("pointerdown", (pointer) => {
             if (pointer.leftButtonDown()) {
-                this.ship.setData("selected", false);
-                this.ship.setTint(0xffffff);
+                this.ship.select(false);
             }
-            if (pointer.rightButtonDown() && this.ship.getData("selected")) {
+            if (pointer.rightButtonDown() && this.ship.selected) {
                 this.target.copy(pointer.position);
             }
         });
 
         this.ship.setInteractive().on("pointerdown", (pointer, _x, _y, event) => {
             if (pointer.leftButtonDown()) {
-                this.ship.setData("selected", true);
-                this.ship.setTint(0xffff00);
+                this.ship.select(true);
                 event.stopPropagation();
             }
         });
