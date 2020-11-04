@@ -5,12 +5,19 @@ import GameScene from "./scenes/game"
 const config = {
     width: 800,
     height: 600,
-    type: Phaser.AUTO
+    type: Phaser.AUTO,
+    scene: [
+        TitleScreen,
+        GameScene,
+    ],
+    physics: {
+        default: "arcade",
+        arcade: {
+            gravity: { x: 0, y: 0 },
+            debug: true
+        }
+    },
+    disableContextMenu: true
 };
 
-const game = new Phaser.Game(config);
-game.scene.add("title", TitleScreen);
-game.scene.add("game", GameScene);
-
-const params = new URLSearchParams(window.location.search);
-game.scene.start(params.get("scene") || "title");
+new Phaser.Game(config);
