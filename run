@@ -52,9 +52,7 @@ def lint():
 
 
 def check():
-    tsc(watch=False)
-    test(watch=False)
-    lint()
+    docker("npm", "run", "check")
 
 
 def start():

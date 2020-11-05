@@ -8,7 +8,8 @@
     "start": "parcel src/index.html --port 1234 --hmr-port 12345",
     "tsc": "tsc --noEmit",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
-    "test": "jest"
+    "test": "jest",
+    "check": "npm run tsc && npm run test && npm run lint"
   },
   "jest": {
     "preset": "ts-jest"
