@@ -28,3 +28,14 @@
    - Control points
    - Creeps
  - Resource collection based on investment only
+
+**Theme**
+
+ - Loose theme - space war across moons
+ - Art styles
+   - Neon
+   - Paper
+   - CRT
+   - Comic book
+   - Sketchbook
+ - "You're here for the gameplay"
