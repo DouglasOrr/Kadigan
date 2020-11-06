@@ -33,17 +33,16 @@ export default class GameScene extends Phaser.Scene {
 
         this.input.on("pointerdown", (pointer) => {
             if (pointer.leftButtonDown()) {
+                const selected = this.physics.overlapCirc(pointer.position.x, pointer.position.y, 0);
+                if (selected.length) {
+                    const ship = <Ship>selected[0].gameObject;
+                    ship.select(true);
+                    return;
+                }
                 this.ship.select(false);
             }
             if (pointer.rightButtonDown() && this.ship.selected) {
                 this.target.copy(pointer.position);
-            }
-        });
-
-        this.ship.setInteractive().on("pointerdown", (pointer, _x, _y, event) => {
-            if (pointer.leftButtonDown()) {
-                this.ship.select(true);
-                event.stopPropagation();
             }
         });
     }
