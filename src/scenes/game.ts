@@ -42,36 +42,51 @@ class Ship extends Phaser.GameObjects.Sprite {
 }
 
 export default class GameScene extends Phaser.Scene {
-    ship: Ship;
+    ships: Array<Ship>;
+    selectMultiple: Phaser.Input.Keyboard.Key;
 
     constructor() {
         super("game");
+        this.ships = [];
     }
     preload(): void {
         this.load.image("ship", "/assets/ship0.png");
     }
     create(): void {
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onpointerdown, this);
+        this.selectMultiple = this.input.keyboard.addKey("SHIFT");
 
-        this.ship = new Ship(this, 100, 200);
-        this.add.existing(this.ship);
-        this.physics.add.existing(this.ship, false);
+        // Demo scene
+        this.spawn(100, 200);
+        this.spawn(300, 300);
+        this.spawn(200, 400);
+    }
+    spawn(x: number, y: number): void {
+        const ship = new Ship(this, x, y);
+        this.ships.push(ship);
+        this.add.existing(ship);
+        this.physics.add.existing(ship);
     }
     onpointerdown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
             const selected = this.physics.overlapCirc(pointer.position.x, pointer.position.y, 0);
+            if (!this.selectMultiple.isDown) {
+                this.ships.forEach((ship) => ship.select(false));
+            }
             if (selected.length) {
                 const ship = <Ship>selected[0].gameObject;
                 ship.select(true);
-                return;
             }
-            this.ship.select(false);
         }
-        if (pointer.rightButtonDown() && this.ship.selected) {
-            this.ship.move(pointer.position);
+        if (pointer.rightButtonDown()) {
+            this.ships.forEach((ship) => {
+                if (ship.selected) {
+                    ship.move(pointer.position);
+                }
+            });
         }
     }
     update(): void {
-        this.ship.update();
+        this.ships.forEach((ship) => ship.update());
     }
 }
