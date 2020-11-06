@@ -2,4 +2,4 @@ language: node_js
 node_js: [15]
 before_script:
   - npm install -g typescript
-script: check
+script: npm run check
