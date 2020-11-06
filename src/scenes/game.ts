@@ -6,6 +6,7 @@ enum ShipState {
 }
 const MoveFinishThreshold = 1.0;
 const ShipSpeed = 50.0;
+const DragThreshold = 10;
 
 class Ship extends Phaser.GameObjects.Sprite {
     state: ShipState;
@@ -42,8 +43,9 @@ class Ship extends Phaser.GameObjects.Sprite {
 }
 
 export default class GameScene extends Phaser.Scene {
-    ships: Array<Ship>;
-    selectMultiple: Phaser.Input.Keyboard.Key;
+    ships: Ship[];
+    keySelectMultiple: Phaser.Input.Keyboard.Key;
+    selectionBox: Phaser.GameObjects.Rectangle;
 
     constructor() {
         super("game");
@@ -53,8 +55,13 @@ export default class GameScene extends Phaser.Scene {
         this.load.image("ship", "/assets/ship0.png");
     }
     create(): void {
+        // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onpointerdown, this);
-        this.selectMultiple = this.input.keyboard.addKey("SHIFT");
+        this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onpointermove, this);
+        this.input.on(Phaser.Input.Events.POINTER_UP, this.onpointerup, this);
+        this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onpointerup, this);
+        this.keySelectMultiple = this.input.keyboard.addKey("SHIFT");
+        this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
 
         // Demo scene
         this.spawn(100, 200);
@@ -67,26 +74,53 @@ export default class GameScene extends Phaser.Scene {
         this.add.existing(ship);
         this.physics.add.existing(ship);
     }
+    update(): void {
+        this.ships.forEach((ship) => ship.update());
+    }
+    // Control
     onpointerdown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
-            const selected = this.physics.overlapCirc(pointer.position.x, pointer.position.y, 0);
-            if (!this.selectMultiple.isDown) {
+            if (!this.keySelectMultiple.isDown) {
                 this.ships.forEach((ship) => ship.select(false));
             }
-            if (selected.length) {
-                const ship = <Ship>selected[0].gameObject;
-                ship.select(true);
-            }
+            this.selectionBox.x = pointer.x;
+            this.selectionBox.y = pointer.y;
+            this.selectionBox.width = 0;
+            this.selectionBox.height = 0;
+            this.selectionBox.visible = true;
         }
-        if (pointer.rightButtonDown()) {
+    }
+    onpointermove(pointer: Phaser.Input.Pointer): void {
+        if (pointer.leftButtonDown()) {
+            this.selectionBox.width = pointer.x - this.selectionBox.x;
+            this.selectionBox.height = pointer.y - this.selectionBox.y;
+        }
+    }
+    onpointerup(pointer: Phaser.Input.Pointer): void {
+        if (pointer.leftButtonReleased()) {
+            const selectionWidth = Math.abs(pointer.x - this.selectionBox.x);
+            const selectionHeight = Math.abs(pointer.y - this.selectionBox.y);
+            const isBox = DragThreshold < selectionWidth || DragThreshold < selectionHeight;
+            const selected = (this.selectionBox.visible && isBox)
+                ? this.physics.overlapRect(
+                    Math.min(pointer.x, this.selectionBox.x),
+                    Math.min(pointer.y, this.selectionBox.y),
+                    selectionWidth, selectionHeight
+                ) : this.physics.overlapCirc(pointer.position.x, pointer.position.y, 0);
+            selected.forEach((obj) => {
+                (<Ship>obj.gameObject).select(true);
+            });
+            this.selectionBox.visible = false;
+        }
+        const inBounds = Phaser.Geom.Rectangle.Contains(
+            this.physics.world.bounds, pointer.x, pointer.y
+        );
+        if (pointer.rightButtonReleased() && inBounds) {
             this.ships.forEach((ship) => {
                 if (ship.selected) {
                     ship.move(pointer.position);
                 }
             });
         }
-    }
-    update(): void {
-        this.ships.forEach((ship) => ship.update());
     }
 }
