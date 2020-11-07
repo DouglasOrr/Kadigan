@@ -25,9 +25,9 @@ class Ship extends Phaser.GameObjects.Sprite {
         this.setTint(selected ? 0xffff00 : 0xffffff);
         this.selected = selected;
     }
-    move(target: Phaser.Math.Vector2) {
+    move(x: number, y: number) {
         this.state = ShipState.Moving;
-        this.target.copy(target);
+        this.target.set(x, y);
     }
     update() {
         if (this.state == ShipState.Moving) {
@@ -47,6 +47,7 @@ export default class GameScene extends Phaser.Scene {
     ships: Ship[];
     keySelectMultiple: Phaser.Input.Keyboard.Key;
     selectionBox: Phaser.GameObjects.Rectangle;
+    cameraKeyControls: Phaser.Cameras.Controls.SmoothedKeyControl;
 
     constructor() {
         super("game");
@@ -57,12 +58,26 @@ export default class GameScene extends Phaser.Scene {
     }
     create(): void {
         // Control
-        this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onpointerdown, this);
-        this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onpointermove, this);
-        this.input.on(Phaser.Input.Events.POINTER_UP, this.onpointerup, this);
-        this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onpointerup, this);
+        this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
+        this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
+        this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
+        this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.keySelectMultiple = this.input.keyboard.addKey("SHIFT");
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
+
+        const cursors = this.input.keyboard.createCursorKeys();
+        this.cameraKeyControls = new Phaser.Cameras.Controls.SmoothedKeyControl({
+            camera: this.cameras.main,
+            left: cursors.left,
+            right: cursors.right,
+            up: cursors.up,
+            down: cursors.down,
+            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+            acceleration: 0.06,
+            drag: 0.0005,
+            maxSpeed: 1.0
+        });
 
         // Demo scene
         this.spawn(100, 200);
@@ -75,51 +90,52 @@ export default class GameScene extends Phaser.Scene {
         this.add.existing(ship);
         this.physics.add.existing(ship);
     }
-    update(): void {
+    update(_time: number, delta: number): void {
         this.ships.forEach((ship) => ship.update());
+        this.cameraKeyControls.update(delta);
     }
     // Control
-    onpointerdown(pointer: Phaser.Input.Pointer): void {
+    onPointerDown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
             if (!this.keySelectMultiple.isDown) {
                 this.ships.forEach((ship) => ship.select(false));
             }
-            this.selectionBox.x = pointer.x;
-            this.selectionBox.y = pointer.y;
+            this.selectionBox.x = pointer.worldX;
+            this.selectionBox.y = pointer.worldY;
             this.selectionBox.width = 0;
             this.selectionBox.height = 0;
             this.selectionBox.visible = true;
         }
     }
-    onpointermove(pointer: Phaser.Input.Pointer): void {
+    onPointerMove(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
-            this.selectionBox.width = pointer.x - this.selectionBox.x;
-            this.selectionBox.height = pointer.y - this.selectionBox.y;
+            this.selectionBox.width = pointer.worldX - this.selectionBox.x;
+            this.selectionBox.height = pointer.worldY - this.selectionBox.y;
         }
     }
-    onpointerup(pointer: Phaser.Input.Pointer): void {
+    onPointerUpOutside(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonReleased()) {
-            const selectionWidth = Math.abs(pointer.x - this.selectionBox.x);
-            const selectionHeight = Math.abs(pointer.y - this.selectionBox.y);
+            const selectionWidth = Math.abs(pointer.worldX - this.selectionBox.x);
+            const selectionHeight = Math.abs(pointer.worldY - this.selectionBox.y);
             const isBox = DragThreshold < selectionWidth || DragThreshold < selectionHeight;
             const selected = (this.selectionBox.visible && isBox)
                 ? this.physics.overlapRect(
-                    Math.min(pointer.x, this.selectionBox.x),
-                    Math.min(pointer.y, this.selectionBox.y),
+                    Math.min(pointer.worldX, this.selectionBox.x),
+                    Math.min(pointer.worldY, this.selectionBox.y),
                     selectionWidth, selectionHeight
-                ) : this.physics.overlapCirc(pointer.position.x, pointer.position.y, 0);
+                ) : this.physics.overlapCirc(pointer.worldX, pointer.worldY, 0);
             selected.forEach((obj) => {
                 (<Ship>obj.gameObject).select(true);
             });
             this.selectionBox.visible = false;
         }
-        const inBounds = Phaser.Geom.Rectangle.Contains(
-            this.physics.world.bounds, pointer.x, pointer.y
-        );
-        if (pointer.rightButtonReleased() && inBounds) {
+    }
+    onPointerUp(pointer: Phaser.Input.Pointer): void {
+        this.onPointerUpOutside(pointer);
+        if (pointer.rightButtonReleased()) {
             this.ships.forEach((ship) => {
                 if (ship.selected) {
-                    ship.move(pointer.position);
+                    ship.move(pointer.worldX, pointer.worldY);
                 }
             });
         }
