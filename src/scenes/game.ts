@@ -7,6 +7,7 @@ enum ShipState {
 const MoveFinishThreshold = 1.0;
 const ShipSpeed = 50.0;
 const DragThreshold = 10;
+const ShipScale = 0.5;
 
 class Ship extends Phaser.GameObjects.Sprite {
     state: ShipState;
@@ -15,7 +16,7 @@ class Ship extends Phaser.GameObjects.Sprite {
 
     constructor(scene, x, y) {
         super(scene, x, y, "ship");
-        this.setScale(0.25, 0.25);
+        this.setScale(ShipScale, ShipScale);
         this.state = ShipState.Idle;
         this.target = new Phaser.Math.Vector2();
         this.selected = false;
