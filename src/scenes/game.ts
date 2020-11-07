@@ -8,6 +8,7 @@ const MoveFinishThreshold = 1.0;
 const ShipSpeed = 50.0;
 const DragThreshold = 10;
 const ShipScale = 0.5;
+const ZoomRatio = 1.2;
 
 class Ship extends Phaser.GameObjects.Sprite {
     state: ShipState;
@@ -48,10 +49,12 @@ export default class GameScene extends Phaser.Scene {
     keySelectMultiple: Phaser.Input.Keyboard.Key;
     selectionBox: Phaser.GameObjects.Rectangle;
     cameraKeyControls: Phaser.Cameras.Controls.SmoothedKeyControl;
+    currentZoom: integer
 
     constructor() {
         super("game");
         this.ships = [];
+        this.currentZoom = 0;
     }
     preload(): void {
         this.load.image("ship", "/assets/ship0.png");
@@ -62,6 +65,7 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
         this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
+        this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
         this.keySelectMultiple = this.input.keyboard.addKey("SHIFT");
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
 
@@ -139,5 +143,16 @@ export default class GameScene extends Phaser.Scene {
                 }
             });
         }
+    }
+    onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {
+        const camera = this.cameras.main;
+        const delta = -Math.sign(dz);
+        this.currentZoom += delta;
+        camera.setZoom(Math.pow(ZoomRatio, this.currentZoom));
+
+        // Scroll the display, so that we keep the pointer world location constant during zoom
+        const scale = (1 - Math.pow(ZoomRatio, -delta));
+        camera.scrollX += scale * (pointer.worldX - camera.worldView.centerX);
+        camera.scrollY += scale * (pointer.worldY - camera.worldView.centerY);
     }
 }
