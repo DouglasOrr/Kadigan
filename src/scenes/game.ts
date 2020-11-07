@@ -1,14 +1,17 @@
 import Phaser from "phaser";
 
+const MoveFinishThreshold = 1.0;
+const ShipSpeed = 50.0;
+const DragThreshold = 10;
+const PanThreshold = 30;
+const PanSpeed = 0.5;
+const ShipScale = 0.5;
+const ZoomRatio = 1.2;
+
 enum ShipState {
     Idle,
     Moving
 }
-const MoveFinishThreshold = 1.0;
-const ShipSpeed = 50.0;
-const DragThreshold = 10;
-const ShipScale = 0.5;
-const ZoomRatio = 1.2;
 
 class Ship extends Phaser.GameObjects.Sprite {
     state: ShipState;
@@ -44,11 +47,18 @@ class Ship extends Phaser.GameObjects.Sprite {
     }
 }
 
+type Settings = {pointerPan: boolean};
+
+export function defaultSettings(): Settings {
+    return {pointerPan: true};
+}
+
 export default class GameScene extends Phaser.Scene {
+    settings: Settings;
     ships: Ship[];
     keySelectMultiple: Phaser.Input.Keyboard.Key;
     selectionBox: Phaser.GameObjects.Rectangle;
-    cameraKeyControls: Phaser.Cameras.Controls.SmoothedKeyControl;
+    keyCursors: Phaser.Types.Input.Keyboard.CursorKeys;
     currentZoom: integer
 
     constructor() {
@@ -59,7 +69,9 @@ export default class GameScene extends Phaser.Scene {
     preload(): void {
         this.load.image("ship", "/assets/ship0.png");
     }
-    create(): void {
+    create(data: Settings): void {
+        this.settings = data;
+
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
         this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
@@ -68,20 +80,7 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
         this.keySelectMultiple = this.input.keyboard.addKey("SHIFT");
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
-
-        const cursors = this.input.keyboard.createCursorKeys();
-        this.cameraKeyControls = new Phaser.Cameras.Controls.SmoothedKeyControl({
-            camera: this.cameras.main,
-            left: cursors.left,
-            right: cursors.right,
-            up: cursors.up,
-            down: cursors.down,
-            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
-            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
-            acceleration: 0.06,
-            drag: 0.0005,
-            maxSpeed: 1.0
-        });
+        this.keyCursors = this.input.keyboard.createCursorKeys();
 
         // Demo scene
         this.spawn(100, 200);
@@ -96,7 +95,26 @@ export default class GameScene extends Phaser.Scene {
     }
     update(_time: number, delta: number): void {
         this.ships.forEach((ship) => ship.update());
-        this.cameraKeyControls.update(delta);
+
+        const camera = this.cameras.main;
+        const px = this.input.activePointer.x;
+        if (this.keyCursors.left.isDown ||
+            (this.settings.pointerPan && px < camera.x + PanThreshold)) {
+            camera.scrollX -= PanSpeed * delta;
+        }
+        if (this.keyCursors.right.isDown ||
+            (this.settings.pointerPan && px > camera.x + camera.width - PanThreshold)) {
+            camera.scrollX += PanSpeed * delta;
+        }
+        const py = this.input.activePointer.y;
+        if (this.keyCursors.up.isDown ||
+            (this.settings.pointerPan && py < camera.y + PanThreshold)) {
+            camera.scrollY -= PanSpeed * delta;
+        }
+        if (this.keyCursors.down.isDown ||
+            (this.settings.pointerPan && py > camera.y + camera.height - PanThreshold)) {
+            camera.scrollY += PanSpeed * delta;
+        }
     }
     // Control
     onPointerDown(pointer: Phaser.Input.Pointer): void {

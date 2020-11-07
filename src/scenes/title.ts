@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import {defaultSettings as gameDefaultSettings} from "./game";
 
 export default class TitleScreen extends Phaser.Scene {
     constructor() {
@@ -12,8 +13,13 @@ export default class TitleScreen extends Phaser.Scene {
         // query string scene=NAME
         const params = new URLSearchParams(window.location.search);
         if (params.has("scene")) {
+            const settings = gameDefaultSettings();
+            if (params.has("pointerpan")) {
+                settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+            }
             this.scene.transition({
                 "target": params.get("scene"),
+                "data": settings,
                 "duration": 0
             })
         }
@@ -28,6 +34,7 @@ export default class TitleScreen extends Phaser.Scene {
         this.input.on("pointerdown", () => {
             this.scene.transition({
                 "target": "game",
+                "data": gameDefaultSettings(),
                 "duration": 0
             });
         });
