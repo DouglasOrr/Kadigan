@@ -1,6 +1,6 @@
 import Phaser from "phaser"
-import TitleScreen from "./scenes/title"
-import GameScene from "./scenes/game"
+import TitleScreen from "./title_scene"
+import GameScene from "./game/scene"
 
 const config = {
     width: 800,

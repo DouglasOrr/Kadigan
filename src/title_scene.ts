@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import {defaultSettings as gameDefaultSettings} from "./game";
+import {defaultSettings as gameDefaultSettings} from "./game/scene";
 
 export default class TitleScreen extends Phaser.Scene {
     constructor() {
