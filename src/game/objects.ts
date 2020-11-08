@@ -2,7 +2,8 @@ import Phaser from "phaser";
 
 const ShipScale = 0.5;
 const MoveFinishThreshold = 1.0;
-const ShipSpeed = 50.0;
+const ShipSpeed = 100.0; // au/s
+const GravityPerRadius = 0.05;  // (au/s)/au
 
 enum ShipState {
     Idle,
@@ -39,6 +40,44 @@ export class Ship extends Phaser.GameObjects.Sprite {
             } else {
                 body.velocity.normalize().scale(ShipSpeed);
             }
+        }
+    }
+}
+
+export type Orbit = {
+    center: Celestial,
+    radius: number,
+    angle: number,
+    clockwise: boolean
+};
+
+export class Celestial extends Phaser.GameObjects.Arc {
+    orbit: Orbit;
+    gravity: number;
+
+    constructor(scene: Phaser.Scene,
+                radius: number,
+                location: Orbit | Phaser.Math.Vector2) {
+        super(scene, 0, 0, radius, 0, 360, false, 0x888888);
+        if (location instanceof Phaser.Math.Vector2) {
+            this.orbit = null;
+            this.setPosition(location.x, location.y);
+        } else {
+            this.orbit = {...location};
+            this.updatePosition();
+        }
+    }
+    updatePosition(): void {
+        if (this.orbit !== null) {
+            this.x = this.orbit.center.x + this.orbit.radius * Math.sin(this.orbit.angle);
+            this.y = this.orbit.center.y + this.orbit.radius * Math.cos(this.orbit.angle);
+        }
+    }
+    update(delta: number): void {
+        if (this.orbit !== null) {
+            const angularSpeed = GravityPerRadius * this.orbit.center.radius / this.orbit.radius;
+            this.orbit.angle += (1 - 2 * +this.orbit.clockwise) * delta * angularSpeed;
+            this.updatePosition();
         }
     }
 }
