@@ -67,9 +67,9 @@ export default class GameScene extends Phaser.Scene {
         this.panStartScroll = new Phaser.Math.Vector2();
 
         // Demo scene
-        const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0));
-        this.spawnCelestial(50, {center: planet, radius: 1200, angle: 0, clockwise: true});
-        this.spawnCelestial(50, {center: planet, radius: 1700, angle: Math.PI, clockwise: false});
+        const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0), 2);
+        this.spawnCelestial(50, {center: planet, radius: 1200, angle: 0, clockwise: true}, 0);
+        this.spawnCelestial(50, {center: planet, radius: 1700, angle: Math.PI, clockwise: false}, 1);
         this.spawnShip(-20, 1000);
         this.spawnShip(0, 1030);
         this.spawnShip(20, 1000);
@@ -83,8 +83,8 @@ export default class GameScene extends Phaser.Scene {
         this.add.existing(ship);
         this.physics.add.existing(ship);
     }
-    spawnCelestial(radius: number, location: Orbit | Phaser.Math.Vector2): Celestial {
-        const celestial = new Celestial(this, radius, location);
+    spawnCelestial(radius: number, location: Orbit | Phaser.Math.Vector2, player: number): Celestial {
+        const celestial = new Celestial(this, radius, location, player);
         this.celestials.push(celestial);
         this.add.existing(celestial);
         return celestial;

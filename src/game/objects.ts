@@ -51,14 +51,23 @@ export type Orbit = {
     clockwise: boolean
 };
 
-export class Celestial extends Phaser.GameObjects.Arc {
+export class Celestial extends Phaser.GameObjects.Container {
+    radius: number;
     orbit: Orbit;
     gravity: number;
+    player: number;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
-                location: Orbit | Phaser.Math.Vector2) {
-        super(scene, 0, 0, radius, 0, 360, false, 0x888888);
+                location: Orbit | Phaser.Math.Vector2,
+                player: number) {
+        super(scene);
+        if (player < 2) {
+            const color = [0x0000ff, 0xff0000][player];
+            this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
+        }
+        this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
+        this.radius = radius;
         if (location instanceof Phaser.Math.Vector2) {
             this.orbit = null;
             this.setPosition(location.x, location.y);
@@ -66,6 +75,7 @@ export class Celestial extends Phaser.GameObjects.Arc {
             this.orbit = {...location};
             this.updatePosition();
         }
+        this.player = player
     }
     updatePosition(): void {
         if (this.orbit !== null) {
