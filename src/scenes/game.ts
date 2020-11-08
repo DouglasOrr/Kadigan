@@ -56,10 +56,17 @@ export function defaultSettings(): Settings {
 export default class GameScene extends Phaser.Scene {
     settings: Settings;
     ships: Ship[];
-    keySelectMultiple: Phaser.Input.Keyboard.Key;
     selectionBox: Phaser.GameObjects.Rectangle;
-    keyCursors: Phaser.Types.Input.Keyboard.CursorKeys;
-    currentZoom: integer
+    keys: {
+        selectMultiple: Phaser.Input.Keyboard.Key,
+        panLeft: Phaser.Input.Keyboard.Key,
+        panRight: Phaser.Input.Keyboard.Key,
+        panUp: Phaser.Input.Keyboard.Key,
+        panDown: Phaser.Input.Keyboard.Key,
+        zoomIn: Phaser.Input.Keyboard.Key,
+        zoomOut: Phaser.Input.Keyboard.Key
+    };
+    currentZoom: integer;
 
     constructor() {
         super("game");
@@ -78,9 +85,16 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
-        this.keySelectMultiple = this.input.keyboard.addKey("SHIFT");
+        this.keys = {
+            selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
+            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
+            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.N),
+            panLeft: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+            panRight: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
+            panUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+            panDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+        };
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
-        this.keyCursors = this.input.keyboard.createCursorKeys();
 
         // Demo scene
         this.spawn(100, 200);
@@ -94,32 +108,44 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.existing(ship);
     }
     update(_time: number, delta: number): void {
+        this.updateCamera(delta);
         this.ships.forEach((ship) => ship.update());
-
+    }
+    // Control
+    changeZoom(delta: integer): void {
+        this.currentZoom += delta;
+        this.cameras.main.setZoom(Math.pow(ZoomRatio, this.currentZoom));
+    }
+    updateCamera(delta: number): void {
         const camera = this.cameras.main;
         const px = this.input.activePointer.x;
-        if (this.keyCursors.left.isDown ||
+        if (this.keys.panLeft.isDown ||
             (this.settings.pointerPan && px < camera.x + PanThreshold)) {
             camera.scrollX -= PanSpeed * delta;
         }
-        if (this.keyCursors.right.isDown ||
+        if (this.keys.panRight.isDown ||
             (this.settings.pointerPan && px > camera.x + camera.width - PanThreshold)) {
             camera.scrollX += PanSpeed * delta;
         }
         const py = this.input.activePointer.y;
-        if (this.keyCursors.up.isDown ||
+        if (this.keys.panUp.isDown ||
             (this.settings.pointerPan && py < camera.y + PanThreshold)) {
             camera.scrollY -= PanSpeed * delta;
         }
-        if (this.keyCursors.down.isDown ||
+        if (this.keys.panDown.isDown ||
             (this.settings.pointerPan && py > camera.y + camera.height - PanThreshold)) {
             camera.scrollY += PanSpeed * delta;
         }
+        if (this.keys.zoomIn.isDown) {
+            this.changeZoom(1);
+        }
+        if (this.keys.zoomOut.isDown) {
+            this.changeZoom(-1);
+        }
     }
-    // Control
     onPointerDown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
-            if (!this.keySelectMultiple.isDown) {
+            if (!this.keys.selectMultiple.isDown) {
                 this.ships.forEach((ship) => ship.select(false));
             }
             this.selectionBox.x = pointer.worldX;
@@ -163,13 +189,12 @@ export default class GameScene extends Phaser.Scene {
         }
     }
     onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {
-        const camera = this.cameras.main;
         const delta = -Math.sign(dz);
-        this.currentZoom += delta;
-        camera.setZoom(Math.pow(ZoomRatio, this.currentZoom));
+        this.changeZoom(delta);
 
         // Scroll the display, so that we keep the pointer world location constant during zoom
         const scale = (1 - Math.pow(ZoomRatio, -delta));
+        const camera = this.cameras.main;
         camera.scrollX += scale * (pointer.worldX - camera.worldView.centerX);
         camera.scrollY += scale * (pointer.worldY - camera.worldView.centerY);
     }
