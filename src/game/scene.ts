@@ -1,56 +1,19 @@
 import Phaser from "phaser";
+import {Ship} from "./objects";
 
-const MoveFinishThreshold = 1.0;
-const ShipSpeed = 50.0;
 const DragThreshold = 10;
 const PanThreshold = 30;
 const PanSpeed = 0.5;
-const ShipScale = 0.5;
 const ZoomRatio = 1.2;
 
-enum ShipState {
-    Idle,
-    Moving
-}
-
-class Ship extends Phaser.GameObjects.Sprite {
-    state: ShipState;
-    target: Phaser.Math.Vector2;
-    selected: boolean;
-
-    constructor(scene, x, y) {
-        super(scene, x, y, "ship");
-        this.setScale(ShipScale, ShipScale);
-        this.state = ShipState.Idle;
-        this.target = new Phaser.Math.Vector2();
-        this.selected = false;
-    }
-    select(selected: boolean) {
-        this.setTint(selected ? 0xffff00 : 0xffffff);
-        this.selected = selected;
-    }
-    move(x: number, y: number) {
-        this.state = ShipState.Moving;
-        this.target.set(x, y);
-    }
-    update() {
-        if (this.state == ShipState.Moving) {
-            const body = <Phaser.Physics.Arcade.Body>this.body;
-            body.velocity.copy(this.target).subtract(body.center);
-            if (body.velocity.length() < MoveFinishThreshold) {
-                this.state = ShipState.Idle;
-                body.velocity.reset();
-            } else {
-                body.velocity.normalize().scale(ShipSpeed);
-            }
-        }
-    }
-}
-
-type Settings = {pointerPan: boolean};
+type Settings = {
+    pointerPan: boolean
+};
 
 export function defaultSettings(): Settings {
-    return {pointerPan: true};
+    return {
+        pointerPan: true
+    };
 }
 
 export default class GameScene extends Phaser.Scene {
