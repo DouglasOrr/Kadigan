@@ -5,6 +5,8 @@ const DragThreshold = 10;
 const PanThreshold = 30;
 const PanSpeed = 0.5;
 const ZoomRatio = 1.2;
+const MinZoom = -6;
+const MaxZoom = 6;
 
 type Settings = {
     pointerPan: boolean
@@ -18,8 +20,10 @@ export function defaultSettings(): Settings {
 
 export default class GameScene extends Phaser.Scene {
     settings: Settings;
+
     ships: Ship[];
     celestials: Celestial[];
+
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
     panStartScroll: Phaser.Math.Vector2;
@@ -32,6 +36,7 @@ export default class GameScene extends Phaser.Scene {
         zoomIn: Phaser.Input.Keyboard.Key,
         zoomOut: Phaser.Input.Keyboard.Key
     };
+    bounds: Phaser.Geom.Rectangle;
     baseZoom: number;
     currentZoom: integer;
 
@@ -73,6 +78,9 @@ export default class GameScene extends Phaser.Scene {
         this.spawnShip(-20, 1000);
         this.spawnShip(0, 1030);
         this.spawnShip(20, 1000);
+
+        this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
+        this.cameras.main.setBounds(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height);
         this.cameras.main.centerOn(0, 700);
         this.baseZoom = 0.4;
         this.changeZoom(0);
@@ -96,8 +104,13 @@ export default class GameScene extends Phaser.Scene {
     }
     // Control
     changeZoom(delta: integer): void {
-        this.currentZoom += delta;
-        this.cameras.main.setZoom(this.baseZoom * Math.pow(ZoomRatio, this.currentZoom));
+        if (MinZoom <= this.currentZoom + delta && this.currentZoom + delta <= MaxZoom) {
+            const camera = this.cameras.main;
+            this.currentZoom += delta;
+            camera.setZoom(this.baseZoom * Math.pow(ZoomRatio, this.currentZoom));
+            camera.x = Math.max(0, (camera.width - camera.zoom * this.bounds.width)/2);
+            camera.y = Math.max(0, (camera.height - camera.zoom * this.bounds.height)/2);
+        }
     }
     updateCamera(delta: number): void {
         const camera = this.cameras.main;
@@ -183,12 +196,12 @@ export default class GameScene extends Phaser.Scene {
         }
     }
     onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {
-        const delta = -Math.sign(dz);
-        this.changeZoom(delta);
+        const camera = this.cameras.main;
+        const originalZoom = camera.zoom;
+        this.changeZoom(-Math.sign(dz));
 
         // Scroll the display, so that we keep the pointer world location constant during zoom
-        const scale = (1 - Math.pow(ZoomRatio, -delta));
-        const camera = this.cameras.main;
+        const scale = 1 - originalZoom / camera.zoom;
         camera.scrollX += scale * (pointer.worldX - camera.worldView.centerX);
         camera.scrollY += scale * (pointer.worldY - camera.worldView.centerY);
     }
