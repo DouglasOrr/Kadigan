@@ -1,55 +1,67 @@
 import Phaser from "phaser";
+import * as unitai from "./unitai";
 
 const ShipScale = 0.5;
-const MoveFinishThreshold = 1.0;
-const ShipSpeed = 100.0; // au/s
 const GravityPerRadius = 0.05;  // (au/s)/au
 
-enum ShipState {
-    Idle,
-    Moving
+interface MoveShipCommand {
+    type: "move",
+    target: Phaser.Math.Vector2
 }
 
+interface OrbitShipCommand {
+    type: "orbit",
+    target: Celestial
+}
+
+type ShipCommand = MoveShipCommand | OrbitShipCommand;
+
 export class Ship extends Phaser.GameObjects.Sprite {
-    state: ShipState;
-    target: Phaser.Math.Vector2;
+    command: ShipCommand;
     selected: boolean;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y, "ship");
         this.setScale(ShipScale, ShipScale);
-        this.state = ShipState.Idle;
-        this.target = new Phaser.Math.Vector2();
+        this.command = {type: "move", target: new Phaser.Math.Vector2(x, y)},
         this.selected = false;
     }
     select(selected: boolean): void {
         this.setTint(selected ? 0xffff00 : 0xffffff);
         this.selected = selected;
     }
-    move(x: number, y: number): void {
-        this.state = ShipState.Moving;
-        this.target.set(x, y);
-    }
-    update(): void {
-        if (this.state == ShipState.Moving) {
-            const body = <Phaser.Physics.Arcade.Body>this.body;
-            body.velocity.copy(this.target).subtract(body.center);
-            if (body.velocity.length() < MoveFinishThreshold) {
-                this.state = ShipState.Idle;
-                body.velocity.reset();
-            } else {
-                body.velocity.normalize().scale(ShipSpeed);
-            }
+    update(dt: number, celestials: Celestial[]): void {
+        const body = <Phaser.Physics.Arcade.Body>this.body;
+
+        // Compute acceleration due to gravity
+        body.acceleration.reset();
+        celestials.forEach((celestial) => {
+            const distance = Phaser.Math.Distance.Between(body.x, body.y, celestial.x, celestial.y);
+            const gravity = (
+                ((GravityPerRadius * celestial.radius) ** 2)
+                / Math.max(distance, celestial.radius)
+            );
+            body.acceleration.x += (celestial.x - body.x) * gravity / distance;
+            body.acceleration.y += (celestial.y - body.y) * gravity / distance;
+        });
+
+        // Handle the active command
+        if (this.command.type === "move") {
+            unitai.targetVelocity(body.position, this.command.target, body.acceleration);
+            unitai.targetAcceleration(dt, body.velocity, body.acceleration, body.acceleration);
+            const rotationRad = Phaser.Math.DEG_TO_RAD * body.rotation;
+            body.angularVelocity = Phaser.Math.RAD_TO_DEG * unitai.rotationRate(dt, rotationRad, body.acceleration);
+            unitai.thrust(rotationRad, body.acceleration, body.acceleration);
         }
     }
 }
 
-export type Orbit = {
+export interface Orbit {
     center: Celestial,
     radius: number,
     angle: number,
     clockwise: boolean
-};
+}
 
 export class Celestial extends Phaser.GameObjects.Container {
     radius: number;
@@ -83,10 +95,10 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.y = this.orbit.center.y + this.orbit.radius * Math.cos(this.orbit.angle);
         }
     }
-    update(delta: number): void {
+    update(dt: number): void {
         if (this.orbit !== null) {
             const angularSpeed = GravityPerRadius * this.orbit.center.radius / this.orbit.radius;
-            this.orbit.angle += (1 - 2 * +this.orbit.clockwise) * delta * angularSpeed;
+            this.orbit.angle += (1 - 2 * +this.orbit.clockwise) * dt * angularSpeed;
             this.updatePosition();
         }
     }

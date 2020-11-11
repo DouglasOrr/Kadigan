@@ -23,6 +23,7 @@ export default class GameScene extends Phaser.Scene {
 
     ships: Ship[];
     celestials: Celestial[];
+    paused: boolean;
 
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
@@ -50,6 +51,7 @@ export default class GameScene extends Phaser.Scene {
         this.settings = data;
         this.ships = [];
         this.celestials = [];
+        this.paused = false;
         this.currentZoom = 0;
 
         // Control
@@ -58,6 +60,7 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
         this.keys = {
             selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
             zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
@@ -99,10 +102,21 @@ export default class GameScene extends Phaser.Scene {
     }
     update(_time: number, delta: number): void {
         this.updateCamera(delta);
-        this.ships.forEach((ship) => ship.update());
-        this.celestials.forEach((celestial) => celestial.update(delta/1000));
+        const dt = delta / 1000;
+        if (!this.paused) {
+            this.ships.forEach((ship) => ship.update(dt, this.celestials));
+            this.celestials.forEach((celestial) => celestial.update(dt));
+        }
     }
     // Control
+    togglePause(): void {
+        this.paused = !this.paused;
+        if (this.paused) {
+            this.physics.pause();
+        } else {
+            this.physics.resume();
+        }
+    }
     changeZoom(delta: integer): void {
         if (MinZoom <= this.currentZoom + delta && this.currentZoom + delta <= MaxZoom) {
             const camera = this.cameras.main;
@@ -190,7 +204,10 @@ export default class GameScene extends Phaser.Scene {
         if (pointer.rightButtonReleased()) {
             this.ships.forEach((ship) => {
                 if (ship.selected) {
-                    ship.move(pointer.worldX, pointer.worldY);
+                    ship.command = {
+                        type: "move",
+                        target: new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+                    };
                 }
             });
         }
