@@ -1,5 +1,5 @@
 import Phaser from "phaser"
-import TitleScreen from "./title_scene"
+import TitleScreen from "./titlescene"
 import GameScene from "./game/scene"
 
 const config = {
