@@ -37,6 +37,14 @@ expect.extend({
     }
 });
 
+test("randomRadialPoint", () => {
+    for (let i = 0; i < 10; ++i) {
+        const centre = v(100, 200);
+        const point = unitai.randomRadialPoint(centre, 8);
+        expect(Phaser.Math.Distance.BetweenPoints(centre, point)).toBeLessThanOrEqual(8);
+    }
+});
+
 test("targetVelocity, destination reached", () => {
     const target = unitai.targetVelocity(v(10, 20), v(10, 20));
     expect(target).toStrictEqual(v(0, 0));
@@ -83,7 +91,7 @@ test("rotationRate, clipped", () => {
 });
 
 test("thrust", () => {
-    expect(unitai.thrust(0, v(10, 0))).toBeCloseToVector(v(10, 0));
-    expect(unitai.thrust(0, v(-10, 0))).toBeCloseToVector(v(0, 0));
-    expect(unitai.thrust(Math.PI/2, v(-2, 2))).toBeCloseToVector(v(0, 2));
+    expect(unitai.thrust(0, v(10, 0))).toBeCloseTo(10);
+    expect(unitai.thrust(0, v(-10, 0))).toBeCloseTo(0);
+    expect(unitai.thrust(Math.PI/2, v(-3, 2))).toBeCloseTo(2);
 });

@@ -4,25 +4,29 @@ import * as unitai from "./unitai";
 const ShipScale = 0.5;
 const GravityPerRadius = 0.05;  // (au/s)/au
 
-export enum ShipCommendType {
-    Move,
-    Orbit
-}
-
-interface ShipCommand {
-    type: ShipCommendType,
-    target: Phaser.Math.Vector2 | Celestial
-}
-
 export class Ship extends Phaser.GameObjects.Sprite {
-    command: ShipCommand;
     selected: boolean;
+    command: unitai.Command;
+    _ship?: unitai.Ship;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y, "ship");
         this.setScale(ShipScale, ShipScale);
-        this.command = {type: ShipCommendType.Move, target: new Phaser.Math.Vector2(x, y)},
         this.selected = false;
+        this.command = {
+            type: unitai.CommandType.Patrol,
+            objective: new Phaser.Math.Vector2(),
+            destination: new Phaser.Math.Vector2(),
+            celetial: undefined,
+            thrust: 0,
+            rotationRate: 0
+        };
+        this.commandPatrol(x, y);
+    }
+    commandPatrol(x: number, y: number): void {
+        this.command.type = unitai.CommandType.Patrol;
+        this.command.objective.set(x, y);
+        this.command.destination.set(x, y);
     }
     select(selected: boolean): void {
         this.setTint(selected ? 0xffff00 : 0xffffff);
@@ -30,9 +34,29 @@ export class Ship extends Phaser.GameObjects.Sprite {
     }
     update(dt: number, celestials: Celestial[]): void {
         const body = <Phaser.Physics.Arcade.Body>this.body;
+        if (this._ship === undefined) {
+            this._ship = {
+                position: body.position,
+                velocity: body.velocity,
+                rotation: Phaser.Math.DEG_TO_RAD * body.rotation
+            };
+        } else {
+            this._ship.position = body.position;
+            this._ship.velocity = body.velocity;
+            this._ship.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
+        }
 
-        // Compute acceleration due to gravity
-        body.acceleration.reset();
+        // Controller
+        unitai.step(dt, this._ship, this.command, body.acceleration);
+
+        // Update from controller
+        body.angularVelocity = Phaser.Math.RAD_TO_DEG * this.command.rotationRate;
+        body.acceleration.set(
+            this.command.thrust * Math.cos(this._ship.rotation),
+            this.command.thrust * Math.sin(this._ship.rotation)
+        );
+
+        // Update acceleration due to gravity
         celestials.forEach((celestial) => {
             const distance = Phaser.Math.Distance.Between(body.x, body.y, celestial.x, celestial.y);
             const gravity = (
@@ -42,16 +66,6 @@ export class Ship extends Phaser.GameObjects.Sprite {
             body.acceleration.x += (celestial.x - body.x) * gravity / distance;
             body.acceleration.y += (celestial.y - body.y) * gravity / distance;
         });
-
-        // Handle the active command
-        if (this.command.type === ShipCommendType.Move) {
-            const target = <Phaser.Math.Vector2>this.command.target;
-            unitai.targetVelocity(body.position, target, body.acceleration);
-            unitai.targetAcceleration(dt, body.velocity, body.acceleration, body.acceleration);
-            const rotationRad = Phaser.Math.DEG_TO_RAD * body.rotation;
-            body.angularVelocity = Phaser.Math.RAD_TO_DEG * unitai.rotationRate(dt, rotationRad, body.acceleration);
-            unitai.thrust(rotationRad, body.acceleration, body.acceleration);
-        }
     }
 }
 
@@ -73,8 +87,8 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
     }
     update(): void {
         if (this.ship !== undefined && this.ship.active && this.ship.selected) {
-            if (this.ship.command.type === ShipCommendType.Move) {
-                const dest = this.ship.command.target;
+            if (this.ship.command.type === unitai.CommandType.Patrol) {
+                const dest = this.ship.command.destination;
                 this.setTo(this.ship.x, this.ship.y, dest.x, dest.y);
             }
         } else {
@@ -90,7 +104,7 @@ export interface Orbit {
     clockwise: boolean
 }
 
-export class Celestial extends Phaser.GameObjects.Container {
+export class Celestial extends Phaser.GameObjects.Container implements unitai.Celestial {
     radius: number;
     orbit: Orbit;
     gravity: number;

@@ -212,10 +212,7 @@ export default class GameScene extends Phaser.Scene {
         if (pointer.rightButtonReleased()) {
             this.ships.forEach((ship) => {
                 if (ship.selected) {
-                    ship.command = {
-                        type: objects.ShipCommendType.Move,
-                        target: new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
-                    };
+                    ship.commandPatrol(pointer.worldX, pointer.worldY);
                 }
             });
         }

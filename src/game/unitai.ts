@@ -1,11 +1,24 @@
 import Phaser from "phaser";
 
+// Helpers
+
 type Vector2 = Phaser.Math.Vector2;
+
+export function randomRadialPoint(center: Vector2, radius: number, out?: Vector2): Vector2 {
+    if (out === undefined) {
+        out = new Phaser.Math.Vector2();
+    }
+    return Phaser.Math.RandomXY(out, radius * Math.sqrt(Math.random())).add(center);
+}
+
+// Logic
 
 export const MaxTargetVelocity = 120; // au/s
 export const Acceleration = 40; // au/s/s
 export const DeceleerationSafetyFactor = 1.2;
 export const RotationRate = 2.0; // rad/s
+export const ArrivalThreshold = 5; // au
+export const PatrolRadius = 50; // au
 
 export function targetVelocity(src: Vector2, dest: Vector2, out?: Vector2): Vector2 {
     if (out === undefined) {
@@ -13,7 +26,9 @@ export function targetVelocity(src: Vector2, dest: Vector2, out?: Vector2): Vect
     }
     out.copy(dest).subtract(src);
     const length = out.length();
-    if (length !== 0) {
+    if (length < ArrivalThreshold) {
+        out.reset();
+    } else {
         // Min stopping distance is sqrt(2 * a * s)
         const speed = Math.min(
             ((2 * Acceleration * length) ** .5) / DeceleerationSafetyFactor,
@@ -46,13 +61,57 @@ export function rotationRate(dt: number, rotation: number, targetAcceleration: V
     return Math.sign(difference) * Math.min(RotationRate, Math.abs(difference) / dt);
 }
 
-export function thrust(rotation: number, targetAcceleration: Vector2, out?: Vector2): Vector2 {
-    if (out === undefined) {
-        out = new Phaser.Math.Vector2();
-    }
-    // We want to allow targetAcceleration === out, so don't update out too early
+export function thrust(rotation: number, targetAcceleration: Vector2): number {
     const rx = Math.cos(rotation);
     const ry = Math.sin(rotation);
-    const scale = Math.max(0, rx * targetAcceleration.x + ry * targetAcceleration.y);
-    return out.set(scale * rx, scale * ry);
+    return Math.max(0, rx * targetAcceleration.x + ry * targetAcceleration.y);
+}
+
+// High level logic
+
+export interface Celestial {
+    radius: number;
+    player: number;
+}
+
+export interface Ship {
+    position: Vector2;
+    velocity: Vector2;
+    rotation: number;
+}
+
+export enum CommandType {
+    Patrol,
+    Orbit
+}
+
+export interface Command {
+    // Persistent
+    type: CommandType;
+    objective: Phaser.Math.Vector2;
+    destination: Phaser.Math.Vector2;
+    celetial: Celestial | undefined;
+    // Instantaneous
+    thrust: number;
+    rotationRate: number;
+}
+
+export function step(dt: number, ship: Ship, command: Command, tmp?: Vector2): Command {
+    if (tmp === undefined) {
+        tmp = new Phaser.Math.Vector2();
+    }
+    if (command.type === CommandType.Patrol) {
+        targetVelocity(ship.position, command.destination, tmp);
+        if (tmp.length() === 0) {
+            // Sample a random point within a circle of the objective
+            randomRadialPoint(command.objective, PatrolRadius, command.destination);
+        }
+        targetAcceleration(dt, ship.velocity, tmp, tmp);
+        command.rotationRate = rotationRate(dt, ship.rotation, tmp);
+        command.thrust = thrust(ship.rotation, tmp);
+    } else {
+        command.rotationRate = 0;
+        command.thrust = 0;
+    }
+    return command;
 }
