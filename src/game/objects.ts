@@ -4,17 +4,15 @@ import * as unitai from "./unitai";
 const ShipScale = 0.5;
 const GravityPerRadius = 0.05;  // (au/s)/au
 
-interface MoveShipCommand {
-    type: "move",
-    target: Phaser.Math.Vector2
+export enum ShipCommendType {
+    Move,
+    Orbit
 }
 
-interface OrbitShipCommand {
-    type: "orbit",
-    target: Celestial
+interface ShipCommand {
+    type: ShipCommendType,
+    target: Phaser.Math.Vector2 | Celestial
 }
-
-type ShipCommand = MoveShipCommand | OrbitShipCommand;
 
 export class Ship extends Phaser.GameObjects.Sprite {
     command: ShipCommand;
@@ -23,7 +21,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y, "ship");
         this.setScale(ShipScale, ShipScale);
-        this.command = {type: "move", target: new Phaser.Math.Vector2(x, y)},
+        this.command = {type: ShipCommendType.Move, target: new Phaser.Math.Vector2(x, y)},
         this.selected = false;
     }
     select(selected: boolean): void {
@@ -46,8 +44,9 @@ export class Ship extends Phaser.GameObjects.Sprite {
         });
 
         // Handle the active command
-        if (this.command.type === "move") {
-            unitai.targetVelocity(body.position, this.command.target, body.acceleration);
+        if (this.command.type === ShipCommendType.Move) {
+            const target = <Phaser.Math.Vector2>this.command.target;
+            unitai.targetVelocity(body.position, target, body.acceleration);
             unitai.targetAcceleration(dt, body.velocity, body.acceleration, body.acceleration);
             const rotationRad = Phaser.Math.DEG_TO_RAD * body.rotation;
             body.angularVelocity = Phaser.Math.RAD_TO_DEG * unitai.rotationRate(dt, rotationRad, body.acceleration);
@@ -74,7 +73,7 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
     }
     update(): void {
         if (this.ship !== undefined && this.ship.active && this.ship.selected) {
-            if (this.ship.command.type == "move") {
+            if (this.ship.command.type === ShipCommendType.Move) {
                 const dest = this.ship.command.target;
                 this.setTo(this.ship.x, this.ship.y, dest.x, dest.y);
             }

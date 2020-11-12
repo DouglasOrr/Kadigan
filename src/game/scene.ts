@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import {Ship, ShipCommandLine, Celestial, Orbit} from "./objects";
+import * as objects from "./objects";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -20,8 +20,8 @@ export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
 
-    ships: Ship[];
-    celestials: Celestial[];
+    ships: objects.Ship[];
+    celestials: objects.Celestial[];
     commandLines: Phaser.GameObjects.Group;
 
     selectionBox: Phaser.GameObjects.Rectangle;
@@ -52,7 +52,7 @@ export default class GameScene extends Phaser.Scene {
 
         this.ships = [];
         this.celestials = [];
-        this.commandLines = this.add.group({classType: ShipCommandLine});
+        this.commandLines = this.add.group({classType: objects.ShipCommandLine});
 
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -90,13 +90,13 @@ export default class GameScene extends Phaser.Scene {
         this.changeZoom(0);
     }
     spawnShip(x: number, y: number): void {
-        const ship = new Ship(this, x, y);
+        const ship = new objects.Ship(this, x, y);
         this.ships.push(ship);
         this.add.existing(ship);
         this.physics.add.existing(ship);
     }
-    spawnCelestial(radius: number, location: Orbit | Phaser.Math.Vector2, player: number): Celestial {
-        const celestial = new Celestial(this, radius, location, player);
+    spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
+        const celestial = new objects.Celestial(this, radius, location, player);
         this.celestials.push(celestial);
         this.add.existing(celestial);
         return celestial;
@@ -107,7 +107,7 @@ export default class GameScene extends Phaser.Scene {
         if (!this.paused) {
             this.ships.forEach((ship) => ship.update(dt, this.celestials));
             this.celestials.forEach((celestial) => celestial.update(dt));
-            this.commandLines.children.iterate((line: ShipCommandLine) => {
+            this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
                 if (line.active) {
                     line.update();
                 }
@@ -200,9 +200,9 @@ export default class GameScene extends Phaser.Scene {
                     selectionWidth, selectionHeight
                 ) : this.physics.overlapCirc(pointer.worldX, pointer.worldY, 0);
             selected.forEach((obj) => {
-                const ship = <Ship>obj.gameObject;
+                const ship = <objects.Ship>obj.gameObject;
                 ship.select(true);
-                (<ShipCommandLine>this.commandLines.get()).setShip(ship);
+                (<objects.ShipCommandLine>this.commandLines.get()).setShip(ship);
             });
             this.selectionBox.visible = false;
         }
@@ -213,7 +213,7 @@ export default class GameScene extends Phaser.Scene {
             this.ships.forEach((ship) => {
                 if (ship.selected) {
                     ship.command = {
-                        type: "move",
+                        type: objects.ShipCommendType.Move,
                         target: new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
                     };
                 }
