@@ -4,7 +4,7 @@ type Vector2 = Phaser.Math.Vector2;
 
 export const MaxTargetVelocity = 120; // au/s
 export const Acceleration = 40; // au/s/s
-export const DeceleerationSafetyFactor = 2;
+export const DeceleerationSafetyFactor = 1.2;
 export const RotationRate = 2.0; // rad/s
 
 export function targetVelocity(src: Vector2, dest: Vector2, out?: Vector2): Vector2 {

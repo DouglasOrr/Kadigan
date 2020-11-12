@@ -56,6 +56,34 @@ export class Ship extends Phaser.GameObjects.Sprite {
     }
 }
 
+export class ShipCommandLine extends Phaser.GameObjects.Line {
+    ship?: Ship;
+
+    constructor(scene: Phaser.Scene) {
+        super(scene);
+        this.setOrigin(0, 0);
+        this.isStroked = true;
+        this.strokeColor = 0xffffff;
+        this.strokeAlpha = 0.5;
+        this.setShip();
+    }
+    setShip(ship?: Ship): void {
+        this.setActive(ship !== undefined);
+        this.setVisible(ship !== undefined);
+        this.ship = ship;
+    }
+    update(): void {
+        if (this.ship !== undefined && this.ship.active && this.ship.selected) {
+            if (this.ship.command.type == "move") {
+                const dest = this.ship.command.target;
+                this.setTo(this.ship.x, this.ship.y, dest.x, dest.y);
+            }
+        } else {
+            this.setShip();
+        }
+    }
+}
+
 export interface Orbit {
     center: Celestial,
     radius: number,
