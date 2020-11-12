@@ -106,7 +106,7 @@ export default class GameScene extends Phaser.Scene {
         const dt = delta / 1000;
         if (!this.paused) {
             this.ships.forEach((ship) => ship.update(dt, this.celestials));
-            this.celestials.forEach((celestial) => celestial.update(dt));
+            this.celestials.forEach((celestial) => { celestial.update(dt); });
             this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
                 if (line.active) {
                     line.update();
@@ -210,9 +210,16 @@ export default class GameScene extends Phaser.Scene {
     onPointerUp(pointer: Phaser.Input.Pointer): void {
         this.onPointerUpOutside(pointer);
         if (pointer.rightButtonReleased()) {
+            const selectedCelstial = this.celestials.find((c) =>
+                Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.radius
+            );
             this.ships.forEach((ship) => {
                 if (ship.selected) {
-                    ship.commandPatrol(pointer.worldX, pointer.worldY);
+                    if (selectedCelstial !== undefined) {
+                        ship.commandOrbit(selectedCelstial);
+                    } else {
+                        ship.commandPatrol(pointer.worldX, pointer.worldY);
+                    }
                 }
             });
         }

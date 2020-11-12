@@ -8,7 +8,11 @@ export function randomRadialPoint(center: Vector2, radius: number, out?: Vector2
     if (out === undefined) {
         out = new Phaser.Math.Vector2();
     }
-    return Phaser.Math.RandomXY(out, radius * Math.sqrt(Math.random())).add(center);
+    const r = radius * Math.sqrt(Math.random());
+    const a = Phaser.Math.PI2 * Math.random();
+    out.x = center.x + r * Math.cos(a);
+    out.y = center.y + r * Math.sin(a);
+    return out;
 }
 
 // Logic
@@ -70,12 +74,13 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
 // High level logic
 
 export interface Celestial {
+    location: Vector2;
     radius: number;
     player: number;
 }
 
 export interface Ship {
-    position: Vector2;
+    location: Vector2;
     velocity: Vector2;
     rotation: number;
 }
@@ -90,7 +95,7 @@ export interface Command {
     type: CommandType;
     objective: Phaser.Math.Vector2;
     destination: Phaser.Math.Vector2;
-    celetial: Celestial | undefined;
+    celestial: Celestial | undefined;
     // Instantaneous
     thrust: number;
     rotationRate: number;
@@ -101,17 +106,23 @@ export function step(dt: number, ship: Ship, command: Command, tmp?: Vector2): C
         tmp = new Phaser.Math.Vector2();
     }
     if (command.type === CommandType.Patrol) {
-        targetVelocity(ship.position, command.destination, tmp);
+        targetVelocity(ship.location, command.destination, tmp);
+        // If we've arrived, sample a random point within a circle of the objective
         if (tmp.length() === 0) {
-            // Sample a random point within a circle of the objective
             randomRadialPoint(command.objective, PatrolRadius, command.destination);
         }
         targetAcceleration(dt, ship.velocity, tmp, tmp);
         command.rotationRate = rotationRate(dt, ship.rotation, tmp);
         command.thrust = thrust(ship.rotation, tmp);
+
+    } else if (command.type == CommandType.Orbit) {
+        targetVelocity(ship.location, command.celestial.location, tmp);
+        targetAcceleration(dt, ship.velocity, tmp, tmp);
+        command.rotationRate = rotationRate(dt, ship.rotation, tmp);
+        command.thrust = thrust(ship.rotation, tmp);
+
     } else {
-        command.rotationRate = 0;
-        command.thrust = 0;
+        console.error(`unexpected command type ${command.type}`);
     }
     return command;
 }

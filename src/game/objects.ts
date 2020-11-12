@@ -17,11 +17,15 @@ export class Ship extends Phaser.GameObjects.Sprite {
             type: unitai.CommandType.Patrol,
             objective: new Phaser.Math.Vector2(),
             destination: new Phaser.Math.Vector2(),
-            celetial: undefined,
+            celestial: undefined,
             thrust: 0,
             rotationRate: 0
         };
         this.commandPatrol(x, y);
+    }
+    commandOrbit(celestial: Celestial): void {
+        this.command.type = unitai.CommandType.Orbit;
+        this.command.celestial = celestial;
     }
     commandPatrol(x: number, y: number): void {
         this.command.type = unitai.CommandType.Patrol;
@@ -36,12 +40,12 @@ export class Ship extends Phaser.GameObjects.Sprite {
         const body = <Phaser.Physics.Arcade.Body>this.body;
         if (this._ship === undefined) {
             this._ship = {
-                position: body.position,
+                location: body.position,
                 velocity: body.velocity,
                 rotation: Phaser.Math.DEG_TO_RAD * body.rotation
             };
         } else {
-            this._ship.position = body.position;
+            this._ship.location = body.position;
             this._ship.velocity = body.velocity;
             this._ship.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
         }
@@ -76,7 +80,6 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
         super(scene);
         this.setOrigin(0, 0);
         this.isStroked = true;
-        this.strokeColor = 0xffffff;
         this.strokeAlpha = 0.5;
         this.setShip();
     }
@@ -90,6 +93,12 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
             if (this.ship.command.type === unitai.CommandType.Patrol) {
                 const dest = this.ship.command.destination;
                 this.setTo(this.ship.x, this.ship.y, dest.x, dest.y);
+                this.strokeColor = 0xffffff;
+            }
+            if (this.ship.command.type == unitai.CommandType.Orbit) {
+                const dest = <Celestial>this.ship.command.celestial;
+                this.setTo(this.ship.x, this.ship.y, dest.x, dest.y);
+                this.strokeColor = 0x00ff00;
             }
         } else {
             this.setShip();
@@ -105,10 +114,13 @@ export interface Orbit {
 }
 
 export class Celestial extends Phaser.GameObjects.Container implements unitai.Celestial {
+    // unitai.Celestial
+    location: Phaser.Math.Vector2;
     radius: number;
+    player: number;
+    // Other
     orbit: Orbit;
     gravity: number;
-    player: number;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
@@ -120,10 +132,13 @@ export class Celestial extends Phaser.GameObjects.Container implements unitai.Ce
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
         }
         this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
+
+        this.location = new Phaser.Math.Vector2();
         this.radius = radius;
         if (location instanceof Phaser.Math.Vector2) {
             this.orbit = null;
             this.setPosition(location.x, location.y);
+            this.location.copy(location);
         } else {
             this.orbit = {...location};
             this.updatePosition();
@@ -134,6 +149,7 @@ export class Celestial extends Phaser.GameObjects.Container implements unitai.Ce
         if (this.orbit !== null) {
             this.x = this.orbit.center.x + this.orbit.radius * Math.sin(this.orbit.angle);
             this.y = this.orbit.center.y + this.orbit.radius * Math.cos(this.orbit.angle);
+            this.location.set(this.x, this.y);
         }
     }
     update(dt: number): void {
