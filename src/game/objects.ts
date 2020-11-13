@@ -18,6 +18,8 @@ export class Ship extends Phaser.GameObjects.Sprite {
             objective: new Phaser.Math.Vector2(),
             destination: new Phaser.Math.Vector2(),
             celestial: undefined,
+            orbitalAngle: undefined,
+            orbitalAngularVelocity: 0,
             thrust: 0,
             rotationRate: 0
         };
@@ -26,6 +28,8 @@ export class Ship extends Phaser.GameObjects.Sprite {
     commandOrbit(celestial: Celestial): void {
         this.command.type = unitai.CommandType.Orbit;
         this.command.celestial = celestial;
+        this.command.orbitalAngle = undefined;
+        this.command.orbitalAngularVelocity = 0;
     }
     commandPatrol(x: number, y: number): void {
         this.command.type = unitai.CommandType.Patrol;

@@ -46,19 +46,17 @@ test("randomRadialPoint", () => {
 });
 
 test("targetVelocity, destination reached", () => {
-    const target = unitai.targetVelocity(v(10, 20), v(10, 20));
-    expect(target).toStrictEqual(v(0, 0));
+    expect(unitai.targetVelocity(v(0, 0))).toStrictEqual(v(0, 0));
 });
 
 test("targetVelocity, max speed far from destination", () => {
     // Destination is [1000 au] away - should be far enough to saturate
-    const target = unitai.targetVelocity(v(10, 20), v(10, 1020));
-    expect(target).toBeCloseToVector(v(0, unitai.MaxTargetVelocity));
+    expect(unitai.targetVelocity(v(0, -1000))).toBeCloseToVector(v(0, -unitai.MaxTargetVelocity));
 });
 
 test("targetVelocity, low speed close to destination", () => {
     // Destination is [5 au] away - should be close enough not to saturate
-    const target = unitai.targetVelocity(v(10, 20), v(7, 24));
+    const target = unitai.targetVelocity(v(-3, 4));
     expect(target.length()).toBeCloseTo(Math.sqrt(10 * unitai.Acceleration) / unitai.DeceleerationSafetyFactor);
     expect(v(target).normalize()).toBeCloseToVector(v(-3, 4).normalize());
 });
