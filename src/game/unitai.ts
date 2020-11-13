@@ -23,9 +23,10 @@ export const DeceleerationSafetyFactor = 2;//1.2;
 export const RotationRate = 2.0; // rad/s
 export const ArrivalThreshold = 5; // au
 export const PatrolRadius = 50; // au
-export const OrbitFactor = 2;
-export const OrbitThresholdFactor = 3;
-export const OrbitVelocity = 20; // au/s
+export const OrbitRadiusFactor = 1.2;
+export const OrbitRadiusOffset = 60; // au
+export const OrbitThresholdOffset = 120; // au
+export const OrbitVelocity = 30; // au/s
 
 export function targetVelocity(delta: Vector2, out?: Vector2): Vector2 {
     if (out === undefined) {
@@ -75,6 +76,7 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
 
 export interface Celestial {
     location: Vector2;
+    velocity: Vector2;
     radius: number;
     player: number;
 }
@@ -109,25 +111,39 @@ export function step(dt: number, ship: Ship, command: Command, tmp?: Vector2): C
     }
     // Choose point to steer towards
     const target = (command.type === CommandType.Patrol) ? command.destination : command.celestial.location;
-    let delta = tmp.copy(target).subtract(ship.location);
+    const delta = tmp.copy(target).subtract(ship.location);
     const distance = delta.length();
-    if (command.type === CommandType.Patrol && distance < ArrivalThreshold) {
-        randomRadialPoint(command.objective, PatrolRadius, command.destination);
-        delta = tmp.copy(command.destination).subtract(ship.location);
-    }
-    if (command.type === CommandType.Orbit && distance < command.celestial.radius * OrbitThresholdFactor) {
-        const orbitRadius = command.celestial.radius * OrbitFactor;
-        if (command.orbitalAngle === undefined) {
-            command.orbitalAngle = -delta.angle();
-            const direction = Math.random() < 0.5 ? -1 : 1;
-            command.orbitalAngularVelocity = direction * OrbitVelocity / orbitRadius;
+    const destVelocity = new Phaser.Math.Vector2(); // TODO - remove memory allocation
+    if (command.type == CommandType.Patrol) {
+        if (distance < ArrivalThreshold) {
+            randomRadialPoint(command.objective, PatrolRadius, command.destination);
+            delta.copy(command.destination).subtract(ship.location);
         }
-        command.orbitalAngle += dt * command.orbitalAngularVelocity;
-        delta.x += orbitRadius * Math.cos(command.orbitalAngle);
-        delta.y += orbitRadius * Math.sin(command.orbitalAngle);
+    } else if (command.type == CommandType.Orbit) {
+        const orbitRadius = command.celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
+        if (distance < orbitRadius + OrbitThresholdOffset) {
+            if (command.orbitalAngle === undefined) {
+                command.orbitalAngle = delta.angle() - Math.PI;
+            }
+            command.orbitalAngle += dt * OrbitVelocity / orbitRadius;
+            const cosa = Math.cos(command.orbitalAngle);
+            const sina = Math.sin(command.orbitalAngle);
+            delta.x += orbitRadius * cosa;
+            delta.y += orbitRadius * sina;
+            destVelocity.set(
+                command.celestial.velocity.x + OrbitVelocity * -sina,
+                command.celestial.velocity.y + OrbitVelocity * cosa
+            );
+        } else {
+            delta.scale((distance - orbitRadius) / distance);
+        }
+    } else {
+        console.error(`Unexpected command type ${command.type}`);
     }
+
     // Steer to point
     const targetV = targetVelocity(delta, tmp);
+    targetV.add(destVelocity);
     const targetA = targetAcceleration(dt, ship.velocity, targetV, tmp);
     command.rotationRate = rotationRate(dt, ship.rotation, targetA);
     command.thrust = thrust(ship.rotation, targetA);
