@@ -75,14 +75,14 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
 // High level logic
 
 export interface Celestial {
-    location: Vector2;
+    position: Vector2;
     velocity: Vector2;
     radius: number;
     player: number;
 }
 
 export interface Ship {
-    location: Vector2;
+    position: Vector2;
     velocity: Vector2;
     rotation: number;
 }
@@ -92,60 +92,96 @@ export enum CommandType {
     Orbit
 }
 
-export interface Command {
-    // Persistent
-    type: CommandType;
+export class Commander {
+    // Inputs
+    ship: Ship;
+    celestials: Celestial[];
+
+    // Command
+    commandType: CommandType;
     objective: Phaser.Math.Vector2;
     destination: Phaser.Math.Vector2;
     celestial: Celestial | undefined;
     orbitalAngle: number | undefined;
-    orbitalAngularVelocity: number;
-    // Instantaneous
+
+    // Actions
     thrust: number;
     rotationRate: number;
-}
 
-export function step(dt: number, ship: Ship, command: Command, tmp?: Vector2): Command {
-    if (tmp === undefined) {
-        tmp = new Phaser.Math.Vector2();
+    // Internal
+    _tmp0: Phaser.Math.Vector2;
+    _tmp1: Phaser.Math.Vector2;
+
+    constructor(ship: Ship, celestials: Celestial[]) {
+        this.ship = ship;
+        this.celestials = celestials;
+        this.commandType = CommandType.Patrol;
+        this.objective = new Phaser.Math.Vector2();
+        this.destination = new Phaser.Math.Vector2();
+        this.celestial = undefined;
+        this.orbitalAngle = undefined;
+        this.thrust = 0;
+        this.rotationRate = 0;
+        this._tmp0 = new Phaser.Math.Vector2();
+        this._tmp1 = new Phaser.Math.Vector2();
     }
-    // Choose point to steer towards
-    const target = (command.type === CommandType.Patrol) ? command.destination : command.celestial.location;
-    const delta = tmp.copy(target).subtract(ship.location);
-    const distance = delta.length();
-    const destVelocity = new Phaser.Math.Vector2(); // TODO - remove memory allocation
-    if (command.type == CommandType.Patrol) {
-        if (distance < ArrivalThreshold) {
-            randomRadialPoint(command.objective, PatrolRadius, command.destination);
-            delta.copy(command.destination).subtract(ship.location);
-        }
-    } else if (command.type == CommandType.Orbit) {
-        const orbitRadius = command.celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
-        if (distance < orbitRadius + OrbitThresholdOffset) {
-            if (command.orbitalAngle === undefined) {
-                command.orbitalAngle = delta.angle() - Math.PI;
+
+    orbit(celestial: Celestial): void {
+        this.commandType = CommandType.Orbit;
+        this.celestial = celestial;
+        this.orbitalAngle = undefined;
+    }
+
+    patrol(x: number, y: number): void {
+        this.commandType = CommandType.Patrol;
+        this.objective.set(x, y);
+        this.destination.set(x, y);
+    }
+
+    step(dt: number): void {
+        // Choose point to steer towards
+        const target = (this.commandType === CommandType.Patrol)
+            ? this.destination : this.celestial.position;
+        const delta = this._tmp0.copy(target).subtract(this.ship.position);
+        const destVelocity = this._tmp1.reset();
+        const distance = delta.length();
+
+        if (this.commandType == CommandType.Patrol) {
+            if (distance < ArrivalThreshold) {
+                randomRadialPoint(this.objective, PatrolRadius, this.destination);
+                delta.copy(this.destination).subtract(this.ship.position);
             }
-            command.orbitalAngle += dt * OrbitVelocity / orbitRadius;
-            const cosa = Math.cos(command.orbitalAngle);
-            const sina = Math.sin(command.orbitalAngle);
-            delta.x += orbitRadius * cosa;
-            delta.y += orbitRadius * sina;
-            destVelocity.set(
-                command.celestial.velocity.x + OrbitVelocity * -sina,
-                command.celestial.velocity.y + OrbitVelocity * cosa
-            );
-        } else {
-            delta.scale((distance - orbitRadius) / distance);
-        }
-    } else {
-        console.error(`Unexpected command type ${command.type}`);
-    }
 
-    // Steer to point
-    const targetV = targetVelocity(delta, tmp);
-    targetV.add(destVelocity);
-    const targetA = targetAcceleration(dt, ship.velocity, targetV, tmp);
-    command.rotationRate = rotationRate(dt, ship.rotation, targetA);
-    command.thrust = thrust(ship.rotation, targetA);
-    return command;
+        } else if (this.commandType == CommandType.Orbit) {
+            const orbitRadius = this.celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
+            if (distance < orbitRadius + OrbitThresholdOffset) {
+                if (this.orbitalAngle === undefined) {
+                    // First approach - set up the orbit
+                    this.orbitalAngle = delta.angle() - Math.PI;
+                }
+                // Set a target on the current orbit
+                this.orbitalAngle += dt * OrbitVelocity / orbitRadius;
+                const cosa = Math.cos(this.orbitalAngle);
+                const sina = Math.sin(this.orbitalAngle);
+                delta.x += orbitRadius * cosa;
+                delta.y += orbitRadius * sina;
+                destVelocity.set(
+                    this.celestial.velocity.x + OrbitVelocity * -sina,
+                    this.celestial.velocity.y + OrbitVelocity * cosa
+                );
+            } else {
+                // Aim for a point on orbit, not the center, so we don't overshoot!
+                delta.scale((distance - orbitRadius) / distance);
+            }
+
+        } else {
+            console.error(`Unexpected command type ${this.commandType}`);
+        }
+
+        // Steer to point
+        const targetV = targetVelocity(delta, this._tmp0).add(destVelocity);
+        const targetA = targetAcceleration(dt, this.ship.velocity, targetV, this._tmp0);
+        this.rotationRate = rotationRate(dt, this.ship.rotation, targetA);
+        this.thrust = thrust(this.ship.rotation, targetA);
+    }
 }

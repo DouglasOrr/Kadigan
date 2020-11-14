@@ -3,7 +3,7 @@ import * as objects from "./objects";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
-const PanSpeed = 0.5;
+const PanSpeed = 1.0;
 const ZoomRatio = 1.2;
 const MinZoom = -6;
 const MaxZoom = 6;
@@ -90,7 +90,7 @@ export default class GameScene extends Phaser.Scene {
         this.changeZoom(0);
     }
     spawnShip(x: number, y: number): void {
-        const ship = new objects.Ship(this, x, y);
+        const ship = new objects.Ship(this, x, y, this.celestials);
         this.ships.push(ship);
         this.add.existing(ship);
         this.physics.add.existing(ship);
@@ -211,14 +211,14 @@ export default class GameScene extends Phaser.Scene {
         this.onPointerUpOutside(pointer);
         if (pointer.rightButtonReleased()) {
             const selectedCelstial = this.celestials.find((c) =>
-                Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.radius
+                Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.unit.radius
             );
             this.ships.forEach((ship) => {
                 if (ship.selected) {
                     if (selectedCelstial !== undefined) {
-                        ship.commandOrbit(selectedCelstial);
+                        ship.commander.orbit(selectedCelstial.unit);
                     } else {
-                        ship.commandPatrol(pointer.worldX, pointer.worldY);
+                        ship.commander.patrol(pointer.worldX, pointer.worldY);
                     }
                 }
             });
