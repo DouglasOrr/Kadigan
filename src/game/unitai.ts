@@ -15,7 +15,7 @@ export function randomRadialPoint(center: Vector2, radius: number, out?: Vector2
     return out;
 }
 
-// Logic
+// Settings
 
 // General
 export const MaxTargetVelocity = 120; // au/s       // max speed to travel towards target
@@ -23,6 +23,7 @@ export const Acceleration = 40; // au/s/s           // max ship acceleration
 export const RotationRate = 2.0; // rad/s           // max ship rotation rate
 export const AccelerationThreshold = 5; // au/s/s   // min acceleration to act upon
 export const DeceleerationSafetyFactor = 1.5;       // multiple of ideal stopping distance
+export const CollisionThreshold = 50; // au   // should be < OrbitRadiusOffset
 
 // Patrol
 export const PatrolArrivalThreshold = 10; // au
@@ -34,20 +35,83 @@ export const OrbitRadiusOffset = 60; // au
 export const OrbitThresholdOffset = 80; // au
 export const OrbitVelocity = 30; // au/s
 
+// Logic
+
+export interface Celestial {
+    position: Vector2;
+    velocity: Vector2;
+    radius: number;
+    player: number;
+}
+
+export interface Ship {
+    position: Vector2;
+    velocity: Vector2;
+    rotation: number;
+}
+
 export function targetVelocity(delta: Vector2, out?: Vector2): Vector2 {
     if (out === undefined) {
         out = new Phaser.Math.Vector2();
     }
     const length = delta.length();
     if (length !== 0) {
-        // Min stopping distance is sqrt(2 * a * s)
+        // Max stopping speed is sqrt(2 * a * s)
         const speed = Math.min(
-            ((2 * Acceleration * length) ** .5) / DeceleerationSafetyFactor,
+            Math.sqrt(2 * Acceleration * length) / DeceleerationSafetyFactor,
             MaxTargetVelocity
         );
         out.copy(delta).scale(speed / length);
     }
     return out;
+}
+
+export function avoidCollisions(position: Vector2, velocity: Vector2, celestials: Celestial[],
+    tmp0?: Vector2, tmp1?: Vector2, out?: Vector2): Vector2 {
+    if (tmp0 === undefined) {
+        tmp0 = new Phaser.Math.Vector2();
+    }
+    if (tmp1 === undefined) {
+        tmp1 = new Phaser.Math.Vector2();
+    }
+    if (out === undefined) {
+        out = new Phaser.Math.Vector2();
+    }
+    // Assume we're only ever going to crash into one celestial at a time - so can just avoid
+    // the first one that seems looks like a problem
+    for (let i = 0; i < celestials.length; ++i) {
+        // This segment of code finds the distance-to-collision with a circle of radius r
+        //  - d is displacement "from ship to celestial center"
+        //  - v is velocity "of ship relative to celestial" (assumed constant until collision)
+        const celestial = celestials[i];
+        const r = celestial.radius + CollisionThreshold;
+        const r2 = r * r;
+        const d = tmp0.copy(celestial.position).subtract(position);
+        const d2 = d.lengthSq();
+        if (d2 < r2) {
+            // We're within the radius; this is bad, we just want to get out ASAP!
+            return out.copy(d).scale(-MaxTargetVelocity / Math.sqrt(d2));
+        }
+        const v = tmp1.copy(velocity).subtract(celestial.velocity);
+        const v2 = v.lengthSq();
+        const vm = Math.sqrt(v2);
+        // Use the cosine rule & quadratic formula to find the distance along v to collision
+        const dCosTheta = d.dot(v) / vm;
+        const collisionDistance = dCosTheta - Math.sqrt(dCosTheta * dCosTheta + r2 - d2);
+        // Use the "stopping distance" with a safefy factor (DeceleerationSafetyFactor) to
+        // determine if we need to take action
+        if (0 <= collisionDistance &&
+            collisionDistance < 0.5 * v2 * (DeceleerationSafetyFactor ** 2) / Acceleration) {
+            // We need to change direction to avoid a collision
+            // Cross product to determine which way to go (based on current velocity)
+            const handedNess = Math.sign(d.x * v.y - d.y * v.x);
+            // Rotate the d vector to find the "minimal miss", with the velocity magnitude from v
+            const dsina = handedNess * r;
+            const dcosa = Math.sqrt(d2 - dsina * dsina);
+            return out.set(d.x * dcosa - d.y * dsina, d.x * dsina + d.y * dcosa).scale(vm / d2);
+        }
+    }
+    return out.copy(velocity);
 }
 
 export function targetAcceleration(dt: number, velocity: Vector2, targetVelocity: Vector2, out?: Vector2): Vector2 {
@@ -75,21 +139,6 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
     return Math.max(0, rx * targetAcceleration.x + ry * targetAcceleration.y);
 }
 
-// High level logic
-
-export interface Celestial {
-    position: Vector2;
-    velocity: Vector2;
-    radius: number;
-    player: number;
-}
-
-export interface Ship {
-    position: Vector2;
-    velocity: Vector2;
-    rotation: number;
-}
-
 export enum CommandType {
     Patrol,
     Orbit
@@ -114,6 +163,7 @@ export class Commander {
     // Internal
     _tmp0: Phaser.Math.Vector2;
     _tmp1: Phaser.Math.Vector2;
+    _tmp2: Phaser.Math.Vector2;
 
     constructor(ship: Ship, celestials: Celestial[]) {
         this.ship = ship;
@@ -127,6 +177,7 @@ export class Commander {
         this.rotationRate = 0;
         this._tmp0 = new Phaser.Math.Vector2();
         this._tmp1 = new Phaser.Math.Vector2();
+        this._tmp2 = new Phaser.Math.Vector2();
     }
 
     orbit(celestial: Celestial): void {
@@ -183,7 +234,9 @@ export class Commander {
         }
 
         // Steer to point
-        const targetV = targetVelocity(delta, this._tmp0).add(destVelocity);
+        const destV = targetVelocity(delta, this._tmp0).add(destVelocity);
+        const targetV = avoidCollisions(this.ship.position, destV, this.celestials,
+            this._tmp1, this._tmp2, this._tmp0);
         const targetA = targetAcceleration(dt, this.ship.velocity, targetV, this._tmp0);
         if (AccelerationThreshold <= targetA.length()) {
             this.rotationRate = rotationRate(dt, this.ship.rotation, targetA);
