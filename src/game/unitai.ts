@@ -17,15 +17,21 @@ export function randomRadialPoint(center: Vector2, radius: number, out?: Vector2
 
 // Logic
 
-export const MaxTargetVelocity = 120; // au/s
-export const Acceleration = 40; // au/s/s
-export const DeceleerationSafetyFactor = 2;//1.2;
-export const RotationRate = 2.0; // rad/s
-export const ArrivalThreshold = 5; // au
-export const PatrolRadius = 50; // au
+// General
+export const MaxTargetVelocity = 120; // au/s       // max speed to travel towards target
+export const Acceleration = 40; // au/s/s           // max ship acceleration
+export const RotationRate = 2.0; // rad/s           // max ship rotation rate
+export const AccelerationThreshold = 5; // au/s/s   // min acceleration to act upon
+export const DeceleerationSafetyFactor = 1.5;       // multiple of ideal stopping distance
+
+// Patrol
+export const PatrolArrivalThreshold = 10; // au
+export const PatrolRadius = 100; // au
+
+// Orbit
 export const OrbitRadiusFactor = 1.2;
 export const OrbitRadiusOffset = 60; // au
-export const OrbitThresholdOffset = 120; // au
+export const OrbitThresholdOffset = 80; // au
 export const OrbitVelocity = 30; // au/s
 
 export function targetVelocity(delta: Vector2, out?: Vector2): Vector2 {
@@ -60,9 +66,6 @@ export function targetAcceleration(dt: number, velocity: Vector2, targetVelocity
 export function rotationRate(dt: number, rotation: number, targetAcceleration: Vector2): number {
     const wrap = targetAcceleration.angle() - rotation;
     const difference = wrap - Phaser.Math.PI2 * Math.floor((wrap + Math.PI) / Phaser.Math.PI2);
-    if (difference === 0) {
-        return difference;
-    }
     return Math.sign(difference) * Math.min(RotationRate, Math.abs(difference) / dt);
 }
 
@@ -147,7 +150,7 @@ export class Commander {
         const distance = delta.length();
 
         if (this.commandType == CommandType.Patrol) {
-            if (distance < ArrivalThreshold) {
+            if (distance < PatrolArrivalThreshold) {
                 randomRadialPoint(this.objective, PatrolRadius, this.destination);
                 delta.copy(this.destination).subtract(this.ship.position);
             }
@@ -156,8 +159,9 @@ export class Commander {
             const orbitRadius = this.celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
             if (distance < orbitRadius + OrbitThresholdOffset) {
                 if (this.orbitalAngle === undefined) {
-                    // First approach - set up the orbit
-                    this.orbitalAngle = delta.angle() - Math.PI;
+                    // A fresh approach - choose a random starting angle
+                    // (this helps to spread out incoming ships more evenly than "closest angle")
+                    this.orbitalAngle = Phaser.Math.PI2 * (Math.random() - .5);
                 }
                 // Set a target on the current orbit
                 this.orbitalAngle += dt * OrbitVelocity / orbitRadius;
@@ -170,7 +174,7 @@ export class Commander {
                     this.celestial.velocity.y + OrbitVelocity * cosa
                 );
             } else {
-                // Aim for a point on orbit, not the center, so we don't overshoot!
+                // Aim for a point on orbit, not the center, so we don't overshoot
                 delta.scale((distance - orbitRadius) / distance);
             }
 
@@ -181,7 +185,12 @@ export class Commander {
         // Steer to point
         const targetV = targetVelocity(delta, this._tmp0).add(destVelocity);
         const targetA = targetAcceleration(dt, this.ship.velocity, targetV, this._tmp0);
-        this.rotationRate = rotationRate(dt, this.ship.rotation, targetA);
-        this.thrust = thrust(this.ship.rotation, targetA);
+        if (AccelerationThreshold <= targetA.length()) {
+            this.rotationRate = rotationRate(dt, this.ship.rotation, targetA);
+            this.thrust = thrust(this.ship.rotation, targetA);
+        } else {
+            this.rotationRate = 0;
+            this.thrust = 0;
+        }
     }
 }
