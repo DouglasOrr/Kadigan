@@ -23,7 +23,7 @@ export const Acceleration = 40; // au/s/s           // max ship acceleration
 export const RotationRate = 2.0; // rad/s           // max ship rotation rate
 export const AccelerationThreshold = 5; // au/s/s   // min acceleration to act upon
 export const DeceleerationSafetyFactor = 1.5;       // multiple of ideal stopping distance
-export const CollisionThreshold = 50; // au   // should be < OrbitRadiusOffset
+export const CollisionThreshold = 50; // au         // should be < OrbitRadiusOffset
 
 // Patrol
 export const PatrolArrivalThreshold = 40; // au

@@ -45,6 +45,17 @@ test("randomRadialPoint", () => {
     }
 });
 
+test("constants in sensible ranges", () => {
+    // Or you cannot orbit properly
+    expect(unitai.CollisionThreshold).toBeLessThan(unitai.OrbitRadiusOffset);
+    // Otherwise oscillate like crazy!
+    expect(unitai.DeceleerationSafetyFactor).toBeGreaterThanOrEqual(1);
+    // Or you're not orbiting outside the body
+    expect(unitai.OrbitRadiusFactor).toBeGreaterThanOrEqual(1);
+    // You should only arrive once you're in radius
+    expect(unitai.PatrolArrivalThreshold).toBeLessThanOrEqual(unitai.PatrolRadius);
+});
+
 test("targetVelocity, destination reached", () => {
     expect(unitai.targetVelocity(v(0, 0))).toStrictEqual(v(0, 0));
 });
