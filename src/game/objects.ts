@@ -7,6 +7,7 @@ type Body = Phaser.Physics.Arcade.Body;
 const ShipScale = 0.5;
 const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
 const GravityPerRadius = 0.05;  // (au/s)/au
+const SpawnTime = 20; // s
 
 // Weapons
 const LazerRecharge = 1.0; // s
@@ -39,7 +40,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Make sure we're initially inactive (need to call setup())
         this.kill();
     }
-    setup(x: number, y: number, player: number): void {
+    setup(x: number, y: number, rotation: number, player: number): void {
         // Set core state
         const body = <Body>this.body;
         this.unit.position = body.position;
@@ -54,8 +55,8 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.visible = true;
         body.enable = true;
         // Set initial state
-        this.setPosition(x, y);
-        body.updateFromGameObject();
+        body.reset(x, y);
+        body.rotation = Phaser.Math.RAD_TO_DEG * rotation;
         this.commander.patrol(x, y);
         this.updateTint();
     }
@@ -63,8 +64,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         const body = (<Body>this.body);
         // Even though we'll be disabled, we can still participate in hit tests,
         // so set a default position
-        this.setPosition(0, 0);
-        body.updateFromGameObject();
+        body.reset(0, 0);
         // Disable: see setup()
         this.active = false;
         this.visible = false;
@@ -227,7 +227,7 @@ export interface Orbit {
 export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
-    gravity: number;
+    charge: number;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
@@ -246,41 +246,50 @@ export class Celestial extends Phaser.GameObjects.Container {
             radius: radius,
             player: player,
         };
+        this.charge = 0;
         if (location instanceof Phaser.Math.Vector2) {
-            this.orbit = null;
+            this.orbit = undefined;
             this.setPosition(location.x, location.y);
             // Constant {position, velocity}
             this.unit.position.copy(location);
             this.unit.velocity.reset();
         } else {
             this.orbit = {...location};
-            this.update(0); // Set {this.x, this.y}
+            this.updateOrbit(0); // Set {this.x, this.y}
         }
     }
-    update(dt: number): void {
-        if (this.orbit !== null) {
-            const direction = (1 - 2 * +this.orbit.clockwise);
-            const angularSpeed = direction * GravityPerRadius * this.orbit.center.unit.radius / this.orbit.radius;
-            this.orbit.angle += angularSpeed * dt;
-            const rcos = this.orbit.radius * Math.cos(this.orbit.angle);
-            const rsin = this.orbit.radius * Math.sin(this.orbit.angle);
-            this.x = this.orbit.center.x + rcos;
-            this.y = this.orbit.center.y + rsin;
-            this.unit.position.set(this.x, this.y);
-            this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
+    updateOrbit(dt: number): void {
+        const direction = (1 - 2 * +this.orbit.clockwise);
+        const angularSpeed = direction * GravityPerRadius * this.orbit.center.unit.radius / this.orbit.radius;
+        this.orbit.angle += angularSpeed * dt;
+        const rcos = this.orbit.radius * Math.cos(this.orbit.angle);
+        const rsin = this.orbit.radius * Math.sin(this.orbit.angle);
+        this.x = this.orbit.center.x + rcos;
+        this.y = this.orbit.center.y + rsin;
+        this.unit.position.set(this.x, this.y);
+        this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
+    }
+    update(dt: number, ships: Phaser.GameObjects.Group): void {
+        if (this.orbit !== undefined) {
+            this.updateOrbit(dt);
+        }
+        this.charge += dt;
+        if (this.unit.player !== 2 && this.charge >= SpawnTime) {
+            this.spawn(ships);
+            this.charge = 0;
         }
     }
-    spawn(ships: Phaser.GameObjects.Group): Ship {
+    spawn(ships: Phaser.GameObjects.Group): void {
         const a = Phaser.Math.PI2 * (Math.random() - .5);
         const r = unitai.orbitalRadius(this.unit);
         const x = this.x + r * Math.cos(a);
         const y = this.y + r * Math.sin(a);
         const ship = <Ship>ships.get();
-        ship.setup(x, y, this.unit.player);
+        // Initially face outwards
+        ship.setup(x, y, a, this.unit.player);
         ship.commander.orbit(this.unit);
         // Slight hack - we know we're already in orbit, but don't want to randomly sample a
         // new position, so set the orbital angle manually
         ship.commander.orbitalAngle = a;
-        return ship;
     }
 }

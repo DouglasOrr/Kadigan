@@ -82,10 +82,10 @@ export default class GameScene extends Phaser.Scene {
             center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
         const enemyMoon = this.spawnCelestial(50, {
             center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
-        for (let i = 0; i < 20; ++i) {
+        for (let i = 0; i < 2; ++i) {
             playerMoon.spawn(this.ships);
         }
-        for (let i = 0; i < 10; ++i) {
+        for (let i = 0; i < 2; ++i) {
             enemyMoon.spawn(this.ships);
         }
 
@@ -107,7 +107,9 @@ export default class GameScene extends Phaser.Scene {
         this.updateCamera(delta);
         const dt = delta / 1000;
         if (!this.paused) {
-            this.celestials.forEach((celestial) => { celestial.update(dt); });
+            this.celestials.forEach((celestial) => {
+                celestial.update(dt, this.ships);
+            });
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active) {
                     ship.update(dt, this.celestials, this.lazerLines);
