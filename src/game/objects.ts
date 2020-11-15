@@ -1,32 +1,74 @@
 import Phaser from "phaser";
 import * as unitai from "./unitai";
 
+type Body = Phaser.Physics.Arcade.Body;
+
+// General
 const ShipScale = 0.5;
 const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
 const GravityPerRadius = 0.05;  // (au/s)/au
+
+// Weapons
+const LazerRecharge = 1.0; // s
+const LazerDamage = 0.3; // (i.e. 1/0.3 = 4 shots to kill)
+const LazerRange = 300; // au
+const LazerTime = 0.2; // s
 
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
     selected: boolean;
     health: number;
+    charge: number;
     commander: unitai.Commander;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, player: number, celestials: Celestial[]) {
-        super(scene, x, y, "ship");
+    constructor(scene: Phaser.Scene, celestials: Celestial[]) {
+        super(scene, 0, 0, "ship");
         scene.physics.add.existing(this);
         this.setScale(ShipScale, ShipScale);
-        const body = <Phaser.Physics.Arcade.Body>this.body;
+        // Set dummy initial state
         this.unit = {
-            position: body.position,
-            velocity: body.velocity,
-            rotation: Phaser.Math.DEG_TO_RAD * body.rotation,
-            player: player
-        }
+            position: undefined,
+            velocity: undefined,
+            rotation: undefined,
+            player: undefined
+        };
+        this.selected = undefined;
+        this.health = undefined;
+        this.charge = undefined;
+        this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
+        // Make sure we're initially inactive (need to call setup())
+        this.kill();
+    }
+    setup(x: number, y: number, player: number): void {
+        // Set core state
+        const body = <Body>this.body;
+        this.unit.position = body.position;
+        this.unit.velocity = body.velocity;
+        this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
+        this.unit.player = player;
         this.selected = false;
         this.health = 1;
-        this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
+        this.charge = 0;
+        // Enable: see kill()
+        this.active = true;
+        this.visible = true;
+        body.enable = true;
+        // Set initial state
+        this.setPosition(x, y);
+        body.updateFromGameObject();
         this.commander.patrol(x, y);
         this.updateTint();
+    }
+    kill(): void {
+        const body = (<Body>this.body);
+        // Even though we'll be disabled, we can still participate in hit tests,
+        // so set a default position
+        this.setPosition(0, 0);
+        body.updateFromGameObject();
+        // Disable: see setup()
+        this.active = false;
+        this.visible = false;
+        body.enable = false;
     }
     select(selected: boolean): void {
         this.selected = selected;
@@ -35,21 +77,21 @@ export class Ship extends Phaser.GameObjects.Sprite {
     updateTint(): void {
         this.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
     }
-    update(dt: number, celestials: Celestial[]): void {
-        const body = <Phaser.Physics.Arcade.Body>this.body;
+    update(dt: number, celestials: Celestial[], lazerLines: Phaser.GameObjects.Group): void {
+        const body = <Body>this.body;
         this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
 
         // Controller
         this.commander.step(dt);
 
-        // Update from controller
+        // Physics from controller
         body.angularVelocity = Phaser.Math.RAD_TO_DEG * this.commander.rotationRate;
         body.acceleration.set(
             this.commander.thrust * Math.cos(this.unit.rotation),
             this.commander.thrust * Math.sin(this.unit.rotation)
         );
 
-        // Update acceleration due to gravity
+        // Physics from gravity
         celestials.forEach((celestial) => {
             const distance = Phaser.Math.Distance.Between(body.x, body.y, celestial.x, celestial.y);
             const gravity = (
@@ -59,6 +101,41 @@ export class Ship extends Phaser.GameObjects.Sprite {
             body.acceleration.x += (celestial.x - body.x) * gravity / distance;
             body.acceleration.y += (celestial.y - body.y) * gravity / distance;
         });
+
+        // Weapon
+        this.charge += dt;
+        if (this.charge >= LazerRecharge) {
+            this.fireWeapon(lazerLines);
+        }
+    }
+    fireWeapon(lazerLines: Phaser.GameObjects.Group): void {
+        let closestEnemy: Ship = undefined;
+        let closestDistanceSq: number = LazerRange * LazerRange;
+        const candidates = <Body[]>this.scene.physics.overlapRect(
+            this.x - LazerRange, this.y - LazerRange, 2 * LazerRange, 2 * LazerRange
+        );
+        candidates.forEach((body => {
+            if (body.enable) {
+                // We only put ships in the physics system
+                const ship = <Ship>body.gameObject;
+                if (ship.unit.player !== this.unit.player) {
+                    const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
+                        this.unit.position, ship.unit.position);
+                    if (distanceSq < closestDistanceSq) {
+                        closestDistanceSq = distanceSq;
+                        closestEnemy = ship;
+                    }
+                }
+            }
+        }));
+        if (closestEnemy !== undefined) {
+            (<ShipLazerLine>lazerLines.get()).set(this, closestEnemy);
+            closestEnemy.health -= LazerDamage;
+            if (closestEnemy.health <= 0) {
+                closestEnemy.kill();
+            }
+            this.charge = 0;
+        }
     }
 }
 
@@ -70,16 +147,16 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
         this.setOrigin(0, 0);
         this.isStroked = true;
         this.strokeAlpha = 0.5;
-        this.unsetShip();
+        this.unset();
     }
-    unsetShip(): void {
-        this.setActive(false);
-        this.setVisible(false);
+    unset(): void {
+        this.active = false;
+        this.visible = false;
         this.ship = undefined;
     }
-    setShip(ship: Ship): void {
-        this.setActive(true);
-        this.setVisible(true);
+    set(ship: Ship): void {
+        this.active = true;
+        this.visible = true;
         this.ship = ship;
         this.update();
     }
@@ -97,7 +174,45 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
                 this.strokeColor = 0x00ff00;
             }
         } else {
-            this.unsetShip();
+            this.unset();
+        }
+    }
+}
+
+export class ShipLazerLine extends Phaser.GameObjects.Line {
+    src?: Ship;
+    dest?: Ship;
+    lifetime?: number;
+
+    constructor(scene: Phaser.Scene) {
+        super(scene);
+        this.setOrigin(0, 0);
+        this.isStroked = true;
+        this.strokeColor = 0xff0000;
+        this.lineWidth = 2;
+        this.unset();
+    }
+    unset(): void {
+        this.active = false;
+        this.visible = false;
+        this.src = undefined;
+        this.dest = undefined;
+        this.lifetime = undefined;
+    }
+    set(src: Ship, dest: Ship): void {
+        this.active = true;
+        this.visible = true;
+        this.src = src;
+        this.dest = dest;
+        this.lifetime = LazerTime;
+        this.update(0);
+    }
+    update(dt: number): void {
+        this.lifetime -= dt;
+        if (this.src !== undefined && this.src.active && this.dest.active && 0 <= this.lifetime) {
+            this.setTo(this.src.x, this.src.y, this.dest.x, this.dest.y);
+        } else {
+            this.unset();
         }
     }
 }
@@ -155,12 +270,13 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
         }
     }
-    spawn(celestials: Celestial[]): Ship {
+    spawn(ships: Phaser.GameObjects.Group): Ship {
         const a = Phaser.Math.PI2 * (Math.random() - .5);
         const r = unitai.orbitalRadius(this.unit);
         const x = this.x + r * Math.cos(a);
         const y = this.y + r * Math.sin(a);
-        const ship = new Ship(this.scene, x, y, this.unit.player, celestials);
+        const ship = <Ship>ships.get();
+        ship.setup(x, y, this.unit.player);
         ship.commander.orbit(this.unit);
         // Slight hack - we know we're already in orbit, but don't want to randomly sample a
         // new position, so set the orbital angle manually

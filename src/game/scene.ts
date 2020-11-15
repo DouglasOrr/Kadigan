@@ -20,9 +20,10 @@ export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
 
-    ships: objects.Ship[];
     celestials: objects.Celestial[];
+    ships: Phaser.GameObjects.Group;
     commandLines: Phaser.GameObjects.Group;
+    lazerLines: Phaser.GameObjects.Group;
 
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
@@ -50,9 +51,10 @@ export default class GameScene extends Phaser.Scene {
         this.settings = data;
         this.paused = false;
 
-        this.ships = [];
         this.celestials = [];
+        this.ships = this.add.group({classType: () => new objects.Ship(this, this.celestials)});
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
+        this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -76,26 +78,24 @@ export default class GameScene extends Phaser.Scene {
 
         // Demo scene
         const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0), 2);
-        const playerMoon = this.spawnCelestial(50, {center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
-        const enemyMoon = this.spawnCelestial(50, {center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
+        const playerMoon = this.spawnCelestial(50, {
+            center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
+        const enemyMoon = this.spawnCelestial(50, {
+            center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
         for (let i = 0; i < 20; ++i) {
-            this.spawnShip(playerMoon);
+            playerMoon.spawn(this.ships);
         }
         for (let i = 0; i < 10; ++i) {
-            this.spawnShip(enemyMoon);
+            enemyMoon.spawn(this.ships);
         }
 
+        // Camera
         this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
         this.cameras.main.setBounds(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height);
         this.cameras.main.centerOn(0, 700);
         this.currentZoom = 0;
         this.baseZoom = 0.4;
         this.changeZoom(0);
-    }
-    spawnShip(base: objects.Celestial): void {
-        const ship = base.spawn(this.celestials);
-        this.ships.push(ship);
-        this.add.existing(ship);
     }
     spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
         const celestial = new objects.Celestial(this, radius, location, player);
@@ -107,11 +107,20 @@ export default class GameScene extends Phaser.Scene {
         this.updateCamera(delta);
         const dt = delta / 1000;
         if (!this.paused) {
-            this.ships.forEach((ship) => ship.update(dt, this.celestials));
             this.celestials.forEach((celestial) => { celestial.update(dt); });
+            this.ships.children.iterate((ship: objects.Ship) => {
+                if (ship.active) {
+                    ship.update(dt, this.celestials, this.lazerLines);
+                }
+            });
             this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
                 if (line.active) {
                     line.update();
+                }
+            });
+            this.lazerLines.children.iterate((line: objects.ShipLazerLine) => {
+                if (line.active) {
+                    line.update(dt);
                 }
             });
         }
@@ -164,9 +173,15 @@ export default class GameScene extends Phaser.Scene {
     onPointerDown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
             if (!this.keys.selectMultiple.isDown) {
-                this.ships.forEach((ship) => ship.select(false));
-                this.commandLines.children.iterate((line) => {
-                    (<objects.ShipCommandLine>line).unsetShip();
+                this.ships.children.iterate((ship: objects.Ship) => {
+                    if (ship.active) {
+                        ship.select(false);
+                    }
+                });
+                this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
+                    if (line.active) {
+                        line.unset();
+                    }
                 });
             }
             this.selectionBox.x = pointer.worldX;
@@ -206,9 +221,9 @@ export default class GameScene extends Phaser.Scene {
                 ) : this.physics.overlapCirc(pointer.worldX, pointer.worldY, 0);
             selected.forEach((obj) => {
                 const ship = <objects.Ship>obj.gameObject;
-                if (ship.unit.player == 0) {
+                if (ship.active && ship.unit.player == 0) {
                     ship.select(true);
-                    (<objects.ShipCommandLine>this.commandLines.get()).setShip(ship);
+                    (<objects.ShipCommandLine>this.commandLines.get()).set(ship);
                 }
             });
             this.selectionBox.visible = false;
@@ -220,8 +235,8 @@ export default class GameScene extends Phaser.Scene {
             const selectedCelstial = this.celestials.find((c) =>
                 Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.unit.radius
             );
-            this.ships.forEach((ship) => {
-                if (ship.selected) {
+            this.ships.children.iterate((ship: objects.Ship) => {
+                if (ship.active && ship.selected) {
                     if (selectedCelstial !== undefined) {
                         ship.commander.orbit(selectedCelstial.unit);
                     } else {
