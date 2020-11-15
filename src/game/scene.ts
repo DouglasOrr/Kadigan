@@ -76,11 +76,14 @@ export default class GameScene extends Phaser.Scene {
 
         // Demo scene
         const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0), 2);
-        this.spawnCelestial(50, {center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
-        this.spawnCelestial(50, {center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
-        this.spawnShip(-20, 1000);
-        this.spawnShip(0, 1030);
-        this.spawnShip(20, 1000);
+        const playerMoon = this.spawnCelestial(50, {center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
+        const enemyMoon = this.spawnCelestial(50, {center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
+        for (let i = 0; i < 20; ++i) {
+            this.spawnShip(playerMoon);
+        }
+        for (let i = 0; i < 10; ++i) {
+            this.spawnShip(enemyMoon);
+        }
 
         this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
         this.cameras.main.setBounds(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height);
@@ -89,11 +92,10 @@ export default class GameScene extends Phaser.Scene {
         this.baseZoom = 0.4;
         this.changeZoom(0);
     }
-    spawnShip(x: number, y: number): void {
-        const ship = new objects.Ship(this, x, y, this.celestials);
+    spawnShip(base: objects.Celestial): void {
+        const ship = base.spawn(this.celestials);
         this.ships.push(ship);
         this.add.existing(ship);
-        this.physics.add.existing(ship);
     }
     spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
         const celestial = new objects.Celestial(this, radius, location, player);
@@ -201,8 +203,10 @@ export default class GameScene extends Phaser.Scene {
                 ) : this.physics.overlapCirc(pointer.worldX, pointer.worldY, 0);
             selected.forEach((obj) => {
                 const ship = <objects.Ship>obj.gameObject;
-                ship.select(true);
-                (<objects.ShipCommandLine>this.commandLines.get()).setShip(ship);
+                if (ship.unit.player == 0) {
+                    ship.select(true);
+                    (<objects.ShipCommandLine>this.commandLines.get()).setShip(ship);
+                }
             });
             this.selectionBox.visible = false;
         }

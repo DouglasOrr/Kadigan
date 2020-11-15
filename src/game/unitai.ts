@@ -26,7 +26,7 @@ export const DeceleerationSafetyFactor = 1.5;       // multiple of ideal stoppin
 export const CollisionThreshold = 50; // au   // should be < OrbitRadiusOffset
 
 // Patrol
-export const PatrolArrivalThreshold = 10; // au
+export const PatrolArrivalThreshold = 40; // au
 export const PatrolRadius = 100; // au
 
 // Orbit
@@ -48,6 +48,7 @@ export interface Ship {
     position: Vector2;
     velocity: Vector2;
     rotation: number;
+    player: number;
 }
 
 export function targetVelocity(delta: Vector2, out?: Vector2): Vector2 {
@@ -139,6 +140,10 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
     return Math.max(0, rx * targetAcceleration.x + ry * targetAcceleration.y);
 }
 
+export function orbitalRadius(celestial: Celestial): number {
+    return celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
+}
+
 export enum CommandType {
     Patrol,
     Orbit
@@ -181,15 +186,30 @@ export class Commander {
     }
 
     orbit(celestial: Celestial): void {
+        const updateAngle = (
+            this.commandType !== CommandType.Orbit ||
+            this.celestial !== celestial
+        );
         this.commandType = CommandType.Orbit;
         this.celestial = celestial;
-        this.orbitalAngle = undefined;
+        if (updateAngle) {
+            this.orbitalAngle = undefined;
+        }
     }
 
     patrol(x: number, y: number): void {
+        // Don't change the current destination if the command is being re-issued
+        // (this prevents repeated "bunching")
+        const updateDestination = (
+            this.commandType !== CommandType.Patrol ||
+            this.destination === undefined ||
+            PatrolRadius <= Phaser.Math.Distance.Between(x, y, this.destination.x, this.destination.y)
+        );
         this.commandType = CommandType.Patrol;
         this.objective.set(x, y);
-        this.destination.set(x, y);
+        if (updateDestination) {
+            this.destination.set(x, y);
+        }
     }
 
     step(dt: number): void {
@@ -207,7 +227,7 @@ export class Commander {
             }
 
         } else if (this.commandType == CommandType.Orbit) {
-            const orbitRadius = this.celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
+            const orbitRadius = orbitalRadius(this.celestial);
             if (distance < orbitRadius + OrbitThresholdOffset) {
                 if (this.orbitalAngle === undefined) {
                     // A fresh approach - choose a random starting angle

@@ -3,13 +3,14 @@ import * as unitai from "./unitai";
 
 const ShipScale = 0.5;
 const GravityPerRadius = 0.05;  // (au/s)/au
+const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
 
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
     commander: unitai.Commander;
     selected: boolean;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, celestials: Celestial[]) {
+    constructor(scene: Phaser.Scene, x: number, y: number, player: number, celestials: Celestial[]) {
         super(scene, x, y, "ship");
         scene.physics.add.existing(this);
         this.setScale(ShipScale, ShipScale);
@@ -17,15 +18,20 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.unit = {
             position: body.position,
             velocity: body.velocity,
-            rotation: Phaser.Math.DEG_TO_RAD * body.rotation
+            rotation: Phaser.Math.DEG_TO_RAD * body.rotation,
+            player: player
         }
         this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
         this.selected = false;
         this.commander.patrol(x, y);
+        this.updateTint();
     }
     select(selected: boolean): void {
-        this.setTint(selected ? 0xffff00 : 0xffffff);
         this.selected = selected;
+        this.updateTint();
+    }
+    updateTint(): void {
+        this.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
     }
     update(dt: number, celestials: Celestial[]): void {
         const body = <Phaser.Physics.Arcade.Body>this.body;
@@ -106,7 +112,7 @@ export class Celestial extends Phaser.GameObjects.Container {
                 player: number) {
         super(scene);
         if (player < 2) {
-            const color = [0x0000ff, 0xff0000][player];
+            const color = PlayerColors[player];
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
         }
         this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
@@ -140,5 +146,17 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.unit.position.set(this.x, this.y);
             this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
         }
+    }
+    spawn(celestials: Celestial[]): Ship {
+        const a = Phaser.Math.PI2 * (Math.random() - .5);
+        const r = unitai.orbitalRadius(this.unit);
+        const x = this.x + r * Math.cos(a);
+        const y = this.y + r * Math.sin(a);
+        const ship = new Ship(this.scene, x, y, this.unit.player, celestials);
+        ship.commander.orbit(this.unit);
+        // Slight hack - we know we're already in orbit, but don't want to randomly sample a
+        // new position, so set the orbital angle manually
+        ship.commander.orbitalAngle = a;
+        return ship;
     }
 }
