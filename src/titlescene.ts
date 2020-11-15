@@ -13,23 +13,31 @@ export default class TitleScreen extends Phaser.Scene {
         // query string scene=NAME
         const params = new URLSearchParams(window.location.search);
         if (params.has("scene")) {
-            const settings = {...game.DEFAULT_SETTINGS};
-            if (params.has("pointerpan")) {
-                settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+            const scene = params.get("scene");
+            if (scene === "game") {
+                const settings = {...game.DEFAULT_SETTINGS};
+                if (params.has("pointerpan")) {
+                    settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+                }
+                this.scene.transition({
+                    "target": params.get("scene"),
+                    "data": settings,
+                    "duration": 0
+                });
             }
-            this.scene.transition({
-                "target": params.get("scene"),
-                "data": settings,
-                "duration": 0
-            })
+            if (scene === "end") {
+                const winner = params.has("winner") ? parseInt(params.get("winner")) : 0;
+                this.scene.transition({
+                    "target": "end",
+                    "data": winner,
+                    "duration": 0
+                });
+            }
         }
 
-        const sprite = this.add.tileSprite(0, 0, 800, 600, "background");
-        sprite.setOrigin(0, 0);
-
-        const text = this.add.text(400, 300, "Unnamed game.");
-        text.setOrigin(0.5, 0.5);
-        text.setFontSize(40);
+        const camera = this.cameras.main;
+        this.add.tileSprite(0, 0, camera.width, camera.height, "background").setOrigin(0, 0);
+        this.add.text(camera.width/2, camera.height/2, "Unnamed game.").setOrigin(0.5, 0.5).setFontSize(40);
 
         this.input.on("pointerdown", () => {
             this.scene.transition({

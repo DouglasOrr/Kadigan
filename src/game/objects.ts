@@ -8,6 +8,8 @@ const ShipScale = 0.5;
 const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
 const GravityPerRadius = 0.05;  // (au/s)/au
 const SpawnTime = 20; // s
+const ConquerTime = 30; // s
+const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
 
 // Weapons
 const LazerRecharge = 1.0; // s
@@ -228,17 +230,25 @@ export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
     charge: number;
+    conquered: number;
+    conquerArc: Phaser.GameObjects.Arc | undefined;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
                 location: Orbit | Phaser.Math.Vector2,
                 player: number) {
         super(scene);
-        if (player < 2) {
+        if (player !== 2) {
             const color = PlayerColors[player];
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
         }
         this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
+        if (player !== 2) {
+            const enemyColor = PlayerColors[1-player];
+            this.conquerArc = new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, enemyColor);
+            this.conquerArc.visible = false;
+            this.add(this.conquerArc);
+        }
 
         this.unit = {
             position: new Phaser.Math.Vector2(),
@@ -247,6 +257,7 @@ export class Celestial extends Phaser.GameObjects.Container {
             player: player,
         };
         this.charge = 0;
+        this.conquered = 0;
         if (location instanceof Phaser.Math.Vector2) {
             this.orbit = undefined;
             this.setPosition(location.x, location.y);
@@ -270,14 +281,49 @@ export class Celestial extends Phaser.GameObjects.Container {
         this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
     }
     update(dt: number, ships: Phaser.GameObjects.Group): void {
+        // Orbiting
         if (this.orbit !== undefined) {
             this.updateOrbit(dt);
         }
+        // Spawning
         this.charge += dt;
         if (this.unit.player !== 2 && this.charge >= SpawnTime) {
             this.spawn(ships);
             this.charge = 0;
         }
+        // Conquering
+        if (this.unit.player !== 2 && this.isBeingConquered()) {
+            this.updateConquered(dt);
+        } else if (this.conquered > 0) {
+            this.updateConquered(-dt);
+        }
+    }
+    updateConquered(delta: number): void {
+        this.conquered = Phaser.Math.Clamp(this.conquered + delta, 0, ConquerTime);
+        this.conquerArc.visible = this.conquered > 0;
+        this.conquerArc.radius = this.unit.radius * Math.sqrt(this.conquered / ConquerTime);
+        if (this.conquered === ConquerTime) {
+            this.scene.scene.transition({
+                "target": "end",
+                "data": this.unit.player === 0 ? -1 : 1,
+                "duration": 0
+            });
+            this.scene.scene.setActive(false);
+        }
+    }
+    isBeingConquered(): boolean {
+        const bodies = this.scene.physics.overlapCirc(
+            this.x, this.y, unitai.orbitalRadius(this.unit) + unitai.OrbitThresholdOffset
+        );
+        let nFriendly = 0;
+        for (let i = 0; i < bodies.length; ++i) {
+            const ship = <Ship>bodies[i].gameObject;
+            nFriendly += +(ship.unit.player == this.unit.player);
+            if (nFriendly >= ConquerDefenders) {
+                return false;
+            }
+        }
+        return bodies.length > 2 * nFriendly;
     }
     spawn(ships: Phaser.GameObjects.Group): void {
         const a = Phaser.Math.PI2 * (Math.random() - .5);

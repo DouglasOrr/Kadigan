@@ -1,6 +1,7 @@
 import Phaser from "phaser"
 import TitleScreen from "./titlescene"
 import GameScene from "./game/scene"
+import EndScene from "./endscene";
 
 const config = {
     width: 800,
@@ -9,6 +10,7 @@ const config = {
     scene: [
         TitleScreen,
         GameScene,
+        EndScene
     ],
     physics: {
         default: "arcade",
