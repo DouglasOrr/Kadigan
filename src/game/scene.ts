@@ -165,6 +165,9 @@ export default class GameScene extends Phaser.Scene {
         if (pointer.leftButtonDown()) {
             if (!this.keys.selectMultiple.isDown) {
                 this.ships.forEach((ship) => ship.select(false));
+                this.commandLines.children.iterate((line) => {
+                    (<objects.ShipCommandLine>line).unsetShip();
+                });
             }
             this.selectionBox.x = pointer.worldX;
             this.selectionBox.y = pointer.worldY;
@@ -231,11 +234,15 @@ export default class GameScene extends Phaser.Scene {
     onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {
         const camera = this.cameras.main;
         const originalZoom = camera.zoom;
+        const originalX = camera.x;
+        const originalY = camera.y;
         this.changeZoom(-Math.sign(dz));
 
         // Scroll the display, so that we keep the pointer world location constant during zoom
         const scale = 1 - originalZoom / camera.zoom;
-        camera.scrollX += scale * (pointer.worldX - camera.worldView.centerX);
-        camera.scrollY += scale * (pointer.worldY - camera.worldView.centerY);
+        const dx = (camera.x / camera.zoom - originalX / originalZoom);
+        const dy = (camera.y / camera.zoom - originalY / originalZoom);
+        camera.scrollX += dx + scale * (pointer.worldX - camera.worldView.centerX);
+        camera.scrollY += dy + scale * (pointer.worldY - camera.worldView.centerY);
     }
 }

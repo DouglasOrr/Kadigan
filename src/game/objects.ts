@@ -2,13 +2,14 @@ import Phaser from "phaser";
 import * as unitai from "./unitai";
 
 const ShipScale = 0.5;
-const GravityPerRadius = 0.05;  // (au/s)/au
 const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
+const GravityPerRadius = 0.05;  // (au/s)/au
 
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
-    commander: unitai.Commander;
     selected: boolean;
+    health: number;
+    commander: unitai.Commander;
 
     constructor(scene: Phaser.Scene, x: number, y: number, player: number, celestials: Celestial[]) {
         super(scene, x, y, "ship");
@@ -21,8 +22,9 @@ export class Ship extends Phaser.GameObjects.Sprite {
             rotation: Phaser.Math.DEG_TO_RAD * body.rotation,
             player: player
         }
-        this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
         this.selected = false;
+        this.health = 1;
+        this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
         this.commander.patrol(x, y);
         this.updateTint();
     }
@@ -68,12 +70,18 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
         this.setOrigin(0, 0);
         this.isStroked = true;
         this.strokeAlpha = 0.5;
-        this.setShip();
+        this.unsetShip();
     }
-    setShip(ship?: Ship): void {
-        this.setActive(ship !== undefined);
-        this.setVisible(ship !== undefined);
+    unsetShip(): void {
+        this.setActive(false);
+        this.setVisible(false);
+        this.ship = undefined;
+    }
+    setShip(ship: Ship): void {
+        this.setActive(true);
+        this.setVisible(true);
         this.ship = ship;
+        this.update();
     }
     update(): void {
         if (this.ship !== undefined && this.ship.active && this.ship.selected) {
@@ -89,7 +97,7 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
                 this.strokeColor = 0x00ff00;
             }
         } else {
-            this.setShip();
+            this.unsetShip();
         }
     }
 }
