@@ -198,18 +198,9 @@ export class Commander {
     }
 
     patrol(x: number, y: number): void {
-        // Don't change the current destination if the command is being re-issued
-        // (this prevents repeated "bunching")
-        const updateDestination = (
-            this.commandType !== CommandType.Patrol ||
-            this.destination === undefined ||
-            PatrolRadius <= Phaser.Math.Distance.Between(x, y, this.destination.x, this.destination.y)
-        );
         this.commandType = CommandType.Patrol;
         this.objective.set(x, y);
-        if (updateDestination) {
-            this.destination.set(x, y);
-        }
+        this.destination.set(x, y);
     }
 
     step(dt: number): void {
