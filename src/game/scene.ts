@@ -8,6 +8,7 @@ const WheelZoom = 1.2;
 const ZoomSpeed = 10;   // /s
 const MinZoom = 0.1;
 const MaxZoom = 1.2;
+const FogTextureDownscale = 2;
 
 interface Settings {
     pointerPan: boolean;
@@ -25,6 +26,9 @@ export default class GameScene extends Phaser.Scene {
     ships: Phaser.GameObjects.Group;
     commandLines: Phaser.GameObjects.Group;
     lazerLines: Phaser.GameObjects.Group;
+    fog: Phaser.GameObjects.RenderTexture;
+    fogBackground: Phaser.GameObjects.Rectangle;
+    fogVision: Phaser.GameObjects.Arc;
 
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
@@ -48,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
     }
     create(data: Settings): void {
         this.scene.manager.start("starfield").sendToBack("starfield");
+        this.game.events.on("prerender", this.preRender, this);
 
         this.settings = data;
         this.paused = false;
@@ -96,6 +101,50 @@ export default class GameScene extends Phaser.Scene {
         this.cameras.main.centerOn(0, 700);
         this.cameras.main.zoom = 0.4;
         this.events.emit("updatecamera", this.cameras.main);
+
+        // Fog of war
+        const camera = this.cameras.main;
+        this.fog = this.add.renderTexture(
+            -500, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
+        ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);
+        this.fogBackground = new Phaser.GameObjects.Rectangle(
+            this, 0, 0, this.fog.width, this.fog.height, 0x202020
+        ).setOrigin(0.5, 0.5);
+        this.fogVision = new Phaser.GameObjects.Arc(
+            this, 0, 0, 100, 0, 360, false, 0x000000
+        );
+    }
+    // Main loop
+    preRender(): void {
+        const camera = this.cameras.main;
+        this.fog.setPosition(
+            camera.scrollX + camera.width*.5, camera.scrollY + camera.height*.5
+        ).setScale(camera.displayWidth / this.fog.width);
+        this.fog.camera.setScroll(
+            camera.scrollX + (camera.width - this.fog.camera.width) * 0.5,
+            camera.scrollY + (camera.height - this.fog.camera.height) * 0.5,
+        ).setZoom(camera.zoom * this.fog.camera.width / camera.width);
+
+        this.fogBackground.setPosition(
+            this.fog.camera.scrollX + this.fog.camera.width * 0.5,
+            this.fog.camera.scrollY + this.fog.camera.height * 0.5,
+        ).setScale(1/this.fog.camera.zoom);
+        this.fog.draw(this.fogBackground);
+
+        // Note: if this ends up being inefficient, we could batch into a single erase() call,
+        // however we'd need a pool of vision Arcs
+        this.ships.children.iterate((obj: objects.Ship) => {
+            if (obj.unit.player === 0) {
+                this.fog.erase(this.fogVision.setPosition(obj.x, obj.y)
+                    .setRadius(objects.ShipVisionRange));
+            }
+        });
+        this.celestials.forEach(celestial => {
+            if (celestial.unit.player === 0) {
+                this.fog.erase(this.fogVision.setPosition(celestial.x, celestial.y)
+                    .setRadius(celestial.unit.radius + objects.CelestialVisionRange));
+            }
+        });
     }
     showDebug(): void {
         console.log({

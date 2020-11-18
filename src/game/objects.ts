@@ -17,6 +17,10 @@ const LazerDamage = 0.3; // (i.e. 1/0.3 = 4 shots to kill)
 const LazerRange = 300; // au
 const LazerTime = 0.2; // s
 
+// Visibility
+export const ShipVisionRange = 500;
+export const CelestialVisionRange = 1000;
+
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
     selected: boolean;
@@ -61,6 +65,9 @@ export class Ship extends Phaser.GameObjects.Sprite {
         body.rotation = Phaser.Math.RAD_TO_DEG * rotation;
         this.commander.patrol(x, y);
         this.updateTint();
+        if (player !== 0) {
+            this.setDepth(-2);
+        }
     }
     kill(): void {
         const body = (<Body>this.body);
@@ -109,10 +116,41 @@ export class Ship extends Phaser.GameObjects.Sprite {
         if (this.charge >= LazerRecharge) {
             this.fireWeapon(lazerLines);
         }
+
+        // Visibility
+        this.visible = this.isVisible(celestials);
+    }
+    isVisible(celestials: Celestial[]): boolean {
+        if (this.unit.player === 0) {
+            return true;
+        }
+        for (let i = 0; i < celestials.length; ++i) {
+            const celestial = celestials[i];
+            const threshold = celestial.unit.radius + CelestialVisionRange;
+            if (celestial.unit.player === 0 &&
+                celestial.unit.position.distanceSq(this.unit.position) < threshold * threshold) {
+                return true;
+            }
+        }
+        // Rough check using overlapRect (exact check follows)
+        const candidates = <Body[]>this.scene.physics.overlapRect(
+            this.x - ShipVisionRange, this.y - ShipVisionRange, 2 * ShipVisionRange, 2 * ShipVisionRange
+        );
+        for (let i = 0; i < candidates.length; ++i) {
+            if (candidates[i].enable) {
+                const ship = <Ship>candidates[i].gameObject;
+                if (ship.unit.player === 0 &&
+                    ship.unit.position.distanceSq(this.unit.position) < ShipVisionRange * ShipVisionRange) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     fireWeapon(lazerLines: Phaser.GameObjects.Group): void {
         let closestEnemy: Ship = undefined;
         let closestDistanceSq: number = LazerRange * LazerRange;
+        // Rough check using overlapRect (exact check follows)
         const candidates = <Body[]>this.scene.physics.overlapRect(
             this.x - LazerRange, this.y - LazerRange, 2 * LazerRange, 2 * LazerRange
         );
