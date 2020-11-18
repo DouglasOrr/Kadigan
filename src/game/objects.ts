@@ -305,7 +305,7 @@ export class Celestial extends Phaser.GameObjects.Container {
         if (this.conquered === ConquerTime) {
             this.scene.scene.transition({
                 "target": "end",
-                "data": this.unit.player === 0 ? -1 : 1,
+                "data": {winner: this.unit.player === 0 ? -1 : 1},
                 "duration": 0
             });
             this.scene.scene.setActive(false);

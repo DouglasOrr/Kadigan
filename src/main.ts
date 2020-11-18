@@ -1,6 +1,7 @@
 import Phaser from "phaser"
 import TitleScreen from "./titlescene"
 import GameScene from "./game/scene"
+import StarfieldScene from "./starfieldscene"
 import EndScene from "./endscene";
 
 const config = {
@@ -10,6 +11,7 @@ const config = {
     scene: [
         TitleScreen,
         GameScene,
+        StarfieldScene,
         EndScene
     ],
     physics: {

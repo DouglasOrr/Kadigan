@@ -4,12 +4,12 @@ export default class EndScene extends Phaser.Scene {
     constructor() {
         super("end");
     }
-    create(result: number): void {
+    create(data: {winner: number}): void {
         let message = "Draw.";
-        if (result === 1) {
+        if (data.winner === 1) {
             message = "Victory.";
         }
-        if (result === -1) {
+        if (data.winner === -1) {
             message = "Defeat.";
         }
 

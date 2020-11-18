@@ -3,10 +3,11 @@ import * as objects from "./objects";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
-const PanSpeed = 1.0;
-const ZoomRatio = 1.2;
-const MinZoom = -6;
-const MaxZoom = 6;
+const PanSpeed = 500;   // au/s (at zoom=1)
+const WheelZoom = 1.2;
+const ZoomSpeed = 10;   // /s
+const MinZoom = 0.1;
+const MaxZoom = 1.2;
 
 interface Settings {
     pointerPan: boolean;
@@ -38,8 +39,6 @@ export default class GameScene extends Phaser.Scene {
         zoomOut: Phaser.Input.Keyboard.Key
     };
     bounds: Phaser.Geom.Rectangle;
-    baseZoom: number;
-    currentZoom: integer;
 
     constructor() {
         super("game");
@@ -48,6 +47,8 @@ export default class GameScene extends Phaser.Scene {
         this.load.image("ship", "/assets/ship0.png");
     }
     create(data: Settings): void {
+        this.scene.manager.start("starfield").sendToBack("starfield");
+
         this.settings = data;
         this.paused = false;
 
@@ -62,6 +63,7 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on("down", this.showDebug, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
         this.keys = {
             selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
@@ -91,11 +93,14 @@ export default class GameScene extends Phaser.Scene {
 
         // Camera
         this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
-        this.cameras.main.setBounds(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height);
         this.cameras.main.centerOn(0, 700);
-        this.currentZoom = 0;
-        this.baseZoom = 0.4;
-        this.changeZoom(0);
+        this.cameras.main.zoom = 0.4;
+        this.events.emit("updatecamera", this.cameras.main);
+    }
+    showDebug(): void {
+        console.log({
+            fps: this.game.loop.actualFps
+        });
     }
     spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
         const celestial = new objects.Celestial(this, radius, location, player);
@@ -104,8 +109,8 @@ export default class GameScene extends Phaser.Scene {
         return celestial;
     }
     update(_time: number, delta: number): void {
-        this.updateCamera(delta);
         const dt = delta / 1000;
+        this.updateCamera(dt);
         if (!this.paused) {
             this.celestials.forEach((celestial) => {
                 celestial.update(dt, this.ships);
@@ -136,40 +141,41 @@ export default class GameScene extends Phaser.Scene {
             this.physics.resume();
         }
     }
-    changeZoom(delta: integer): void {
-        if (MinZoom <= this.currentZoom + delta && this.currentZoom + delta <= MaxZoom) {
-            const camera = this.cameras.main;
-            this.currentZoom += delta;
-            camera.setZoom(this.baseZoom * Math.pow(ZoomRatio, this.currentZoom));
-            camera.x = Math.max(0, (camera.width - camera.zoom * this.bounds.width)/2);
-            camera.y = Math.max(0, (camera.height - camera.zoom * this.bounds.height)/2);
-        }
-    }
-    updateCamera(delta: number): void {
+    changeZoom(delta: number): void {
         const camera = this.cameras.main;
+        camera.setZoom(Phaser.Math.Clamp(camera.zoom * delta, MinZoom, MaxZoom));
+    }
+    updateCamera(dt: number): void {
+        const camera = this.cameras.main;
+        const delta = PanSpeed * dt / camera.zoom;
+
         const px = this.input.activePointer.x;
-        if (this.keys.panLeft.isDown ||
-            (this.settings.pointerPan && px < camera.x + PanThreshold)) {
-            camera.scrollX -= PanSpeed * delta;
-        }
-        if (this.keys.panRight.isDown ||
-            (this.settings.pointerPan && px > camera.x + camera.width - PanThreshold)) {
-            camera.scrollX += PanSpeed * delta;
-        }
+        const left = this.keys.panLeft.isDown || (
+            this.settings.pointerPan && px < camera.x + PanThreshold);
+        const right = this.keys.panRight.isDown || (
+            this.settings.pointerPan && px > camera.x + camera.width - PanThreshold);
+        const panX = (+right - +left)
+        camera.scrollX = Phaser.Math.Clamp(
+            camera.scrollX + delta * panX, this.bounds.left, this.bounds.right
+        );
+
         const py = this.input.activePointer.y;
-        if (this.keys.panUp.isDown ||
-            (this.settings.pointerPan && py < camera.y + PanThreshold)) {
-            camera.scrollY -= PanSpeed * delta;
+        const up = this.keys.panUp.isDown || (
+            this.settings.pointerPan && py < camera.y + PanThreshold);
+        const down = this.keys.panDown.isDown || (
+            this.settings.pointerPan && py > camera.y + camera.height - PanThreshold);
+        const panY = (+down - +up);
+        camera.scrollY = Phaser.Math.Clamp(
+            camera.scrollY + delta * panY, this.bounds.top, this.bounds.bottom
+        );
+
+        const zoom = +this.keys.zoomIn.isDown - +this.keys.zoomOut.isDown;
+        if (zoom !== 0) {
+            this.changeZoom(ZoomSpeed ** (dt * zoom));
         }
-        if (this.keys.panDown.isDown ||
-            (this.settings.pointerPan && py > camera.y + camera.height - PanThreshold)) {
-            camera.scrollY += PanSpeed * delta;
-        }
-        if (this.keys.zoomIn.isDown) {
-            this.changeZoom(1);
-        }
-        if (this.keys.zoomOut.isDown) {
-            this.changeZoom(-1);
+
+        if (panX !== 0 || panY !== 0 || zoom !== 0) {
+            this.events.emit("updatecamera", this.cameras.main);
         }
     }
     onPointerDown(pointer: Phaser.Input.Pointer): void {
@@ -253,7 +259,7 @@ export default class GameScene extends Phaser.Scene {
         const originalZoom = camera.zoom;
         const originalX = camera.x;
         const originalY = camera.y;
-        this.changeZoom(-Math.sign(dz));
+        this.changeZoom(WheelZoom ** -Math.sign(dz));
 
         // Scroll the display, so that we keep the pointer world location constant during zoom
         const scale = 1 - originalZoom / camera.zoom;
@@ -261,5 +267,7 @@ export default class GameScene extends Phaser.Scene {
         const dy = (camera.y / camera.zoom - originalY / originalZoom);
         camera.scrollX += dx + scale * (pointer.worldX - camera.worldView.centerX);
         camera.scrollY += dy + scale * (pointer.worldY - camera.worldView.centerY);
+
+        this.events.emit("updatecamera", camera);
     }
 }
