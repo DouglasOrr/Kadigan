@@ -26,7 +26,6 @@ export default class StarfieldScene extends Phaser.Scene {
     updateCamera(gameCamera: Phaser.Cameras.Scene2D.Camera): void {
         const camera = this.cameras.main;
         camera.zoom = 0.25 * gameCamera.zoom ** 0.1;
-        // camera.centerOn(gameCamera.midPoint.x / 4, gameCamera.midPoint.y / 4);
         // Don't use midPoint, as it may not have been computed yet
         const x = gameCamera.scrollX + gameCamera.width*.5;
         const y = gameCamera.scrollY + gameCamera.height*.5;
