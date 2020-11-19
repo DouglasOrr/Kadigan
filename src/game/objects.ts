@@ -27,6 +27,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     health: number;
     charge: number;
     commander: unitai.Commander;
+    vision: Phaser.GameObjects.Arc;
 
     constructor(scene: Phaser.Scene, celestials: Celestial[]) {
         super(scene, 0, 0, "ship");
@@ -43,6 +44,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.health = undefined;
         this.charge = undefined;
         this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
+        this.vision = new Phaser.GameObjects.Arc(scene, 0, 0, ShipVisionRange, 0, 360, false, 0x000000);
         // Make sure we're initially inactive (need to call setup())
         this.kill();
     }
@@ -270,6 +272,7 @@ export class Celestial extends Phaser.GameObjects.Container {
     charge: number;
     conquered: number;
     conquerArc: Phaser.GameObjects.Arc | undefined;
+    vision: Phaser.GameObjects.Arc;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
@@ -296,6 +299,8 @@ export class Celestial extends Phaser.GameObjects.Container {
         };
         this.charge = 0;
         this.conquered = 0;
+        this.vision = new Phaser.GameObjects.Arc(scene,
+            0, 0, radius + CelestialVisionRange, 0, 360, false, 0x000000);
         if (location instanceof Phaser.Math.Vector2) {
             this.orbit = undefined;
             this.setPosition(location.x, location.y);
