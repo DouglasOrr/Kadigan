@@ -7,7 +7,7 @@ export default class StarfieldScene extends Phaser.Scene {
     create(): void {
         // Render to a reasonably sized texture to avoid redrawing tiny stars every
         // single frame!
-        const tex = this.add.renderTexture(0, 0, 2048, 2048).setOrigin(0.5, 0.5).setScale(2.5);
+        const tex = this.add.renderTexture(0, 0, 3072, 2048).setOrigin(0.5, 0.5).setScale(3.5);
         const stars = [];
         for (let i = 0; i < 4000; ++i) {
             const d = Math.random() ** 3;

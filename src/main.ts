@@ -5,9 +5,12 @@ import StarfieldScene from "./starfieldscene"
 import EndScene from "./endscene";
 
 const config = {
+    type: Phaser.AUTO,
     width: 800,
     height: 600,
-    type: Phaser.AUTO,
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+    },
     scene: [
         TitleScreen,
         GameScene,
@@ -20,7 +23,7 @@ const config = {
             gravity: { x: 0, y: 0 }
         }
     },
-    disableContextMenu: true
+    disableContextMenu: true,
 };
 
 new Phaser.Game(config);
