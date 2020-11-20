@@ -71,17 +71,17 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
 
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I).on("down", () => this.scale.toggleFullscreen(), this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on("down", () => this.scale.toggleFullscreen(), this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on("down", this.showDebug, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
         this.keys = {
             selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
-            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
-            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.N),
-            panLeft: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
-            panRight: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
-            panUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
-            panDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+            panLeft: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+            panRight: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+            panUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+            panDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
         };
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
         this.panStartPosition = new Phaser.Math.Vector2();
