@@ -16,13 +16,13 @@ def sh(*cmd):
         sys.exit(1)
 
 
-def docker(*cmd, ports=()):
+def docker(*cmd, ports=(), image=IMAGE):
     cwd = os.getcwd()
     sh("docker", "run", "--rm", "--interactive", "--tty",
         "--volume", f"{cwd}:{cwd}", "--workdir", cwd,
         "--user", f"{os.getuid()}:{os.getgid()}",
         *(arg for port in ports for arg in ["--publish", f"{port}:{port}"]),
-        IMAGE, *cmd)
+        image, *cmd)
 
 
 def build():
@@ -59,6 +59,10 @@ def start():
     docker("npm", "run", "start", ports=(1234, 12345))
 
 
+def notebook():
+    docker(image="jupyter/scipy-notebook:42f4c82a07ff", ports=(8888,))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.set_defaults(action=lambda: parser.print_help())
@@ -85,6 +89,7 @@ def main():
     subparsers.add_parser("lint").set_defaults(action=lint)
     subparsers.add_parser("check").set_defaults(action=check)
     subparsers.add_parser("start").set_defaults(action=start)
+    subparsers.add_parser("notebook").set_defaults(action=notebook)
 
     args = vars(parser.parse_args())
     action = args.pop("action")
