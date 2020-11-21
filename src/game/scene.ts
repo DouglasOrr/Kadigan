@@ -60,7 +60,9 @@ export default class GameScene extends Phaser.Scene {
         this.time.addEvent({
             delay: 1000,
             callback: () => {
-                this.players.forEach(player => player.updateEconomy());
+                if (!this.paused) {
+                    this.players.forEach(player => player.updateEconomy());
+                }
             },
             callbackScope: this,
             loop: true,
@@ -117,7 +119,7 @@ export default class GameScene extends Phaser.Scene {
         // Fog of war
         const camera = this.cameras.main;
         this.fog = this.add.renderTexture(
-            -500, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
+            0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
         ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);
     }
     // Main loop
@@ -142,12 +144,19 @@ export default class GameScene extends Phaser.Scene {
                 visions.push(celestial.vision.setPosition(celestial.x, celestial.y));
             }
         });
-        this.fog.fill(0x202020, 1, 0, 0, this.fog.displayWidth, this.fog.displayHeight);
+
+        this.fog.fill(0x202020, 1, 0, 0,
+            this.fog.width * FogTextureDownscale, this.fog.height * FogTextureDownscale);
         this.fog.erase(visions);
     }
     showDebug(): void {
+        const camera = this.cameras.main;
         console.log({
-            fps: this.game.loop.actualFps
+            fps: this.game.loop.actualFps,
+            camera: {
+                zoom: camera.zoom,
+                center: {x: camera.centerX, y: camera.centerY},
+            },
         });
     }
     spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
