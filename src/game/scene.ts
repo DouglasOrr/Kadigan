@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import * as objects from "./objects";
+import * as player from "./player";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -22,6 +23,7 @@ export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
 
+    players: player.Player[];
     celestials: objects.Celestial[];
     ships: Phaser.GameObjects.Group;
     commandLines: Phaser.GameObjects.Group;
@@ -55,6 +57,14 @@ export default class GameScene extends Phaser.Scene {
             const camera = this.cameras.main;
             this.fog.resize(camera.width / FogTextureDownscale, camera.height / FogTextureDownscale);
         }, this);
+        this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                this.players.forEach(player => player.updateEconomy());
+            },
+            callbackScope: this,
+            loop: true,
+        });
 
         this.settings = data;
         this.paused = false;
@@ -93,12 +103,10 @@ export default class GameScene extends Phaser.Scene {
             center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
         const enemyMoon = this.spawnCelestial(50, {
             center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
-        for (let i = 0; i < 2; ++i) {
-            playerMoon.spawn(this.ships);
-        }
-        for (let i = 0; i < 2; ++i) {
-            enemyMoon.spawn(this.ships);
-        }
+        this.players = [
+            new player.Player(0, playerMoon, this.ships),
+            new player.Player(1, enemyMoon, this.ships),
+        ];
 
         // Camera
         this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
@@ -153,7 +161,7 @@ export default class GameScene extends Phaser.Scene {
         this.updateCamera(dt);
         if (!this.paused) {
             this.celestials.forEach((celestial) => {
-                celestial.update(dt, this.ships);
+                celestial.update(dt);
             });
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active) {

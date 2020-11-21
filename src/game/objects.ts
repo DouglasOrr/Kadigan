@@ -7,7 +7,6 @@ type Body = Phaser.Physics.Arcade.Body;
 const ShipScale = 0.5;
 const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
 const GravityPerRadius = 0.05;  // (au/s)/au
-const SpawnTime = 20; // s
 const ConquerTime = 30; // s
 const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
 
@@ -18,8 +17,8 @@ const LazerRange = 300; // au
 const LazerTime = 0.2; // s
 
 // Visibility
-export const ShipVisionRange = 500;
-export const CelestialVisionRange = 1000;
+const ShipVisionRange = 500;
+const CelestialVisionRange = 1000;
 
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
@@ -269,7 +268,6 @@ export interface Orbit {
 export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
-    charge: number;
     conquered: number;
     conquerArc: Phaser.GameObjects.Arc | undefined;
     vision: Phaser.GameObjects.Arc;
@@ -297,7 +295,6 @@ export class Celestial extends Phaser.GameObjects.Container {
             radius: radius,
             player: player,
         };
-        this.charge = 0;
         this.conquered = 0;
         this.vision = new Phaser.GameObjects.Arc(scene,
             0, 0, radius + CelestialVisionRange, 0, 360, false, 0x000000);
@@ -323,16 +320,10 @@ export class Celestial extends Phaser.GameObjects.Container {
         this.unit.position.set(this.x, this.y);
         this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
     }
-    update(dt: number, ships: Phaser.GameObjects.Group): void {
+    update(dt: number): void {
         // Orbiting
         if (this.orbit !== undefined) {
             this.updateOrbit(dt);
-        }
-        // Spawning
-        this.charge += dt;
-        if (this.unit.player !== 2 && this.charge >= SpawnTime) {
-            this.spawn(ships);
-            this.charge = 0;
         }
         // Conquering
         if (this.unit.player !== 2 && this.isBeingConquered()) {
