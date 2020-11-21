@@ -1,11 +1,12 @@
 import Phaser from "phaser";
 import * as economy from "./economy";
 import * as objects from "./objects";
+import * as unitai from "./unitai";
 
 const StartingShips = 3;
 
 export class Player {
-    id: integer;
+    id: unitai.PlayerId;
     home: objects.Celestial;
     account: economy.Account;
     ships: Phaser.GameObjects.Group;

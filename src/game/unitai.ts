@@ -37,18 +37,24 @@ export const OrbitVelocity = 30; // au/s
 
 // Logic
 
+export enum PlayerId {
+    Player,
+    Enemy,
+    Neutral,
+}
+
 export interface Celestial {
     position: Vector2;
     velocity: Vector2;
     radius: number;
-    player: number;
+    player: PlayerId;
 }
 
 export interface Ship {
     position: Vector2;
     velocity: Vector2;
     rotation: number;
-    player: number;
+    player: PlayerId;
 }
 
 export function targetVelocity(delta: Vector2, out?: Vector2): Vector2 {

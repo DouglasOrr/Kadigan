@@ -47,7 +47,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Make sure we're initially inactive (need to call setup())
         this.kill();
     }
-    setup(x: number, y: number, rotation: number, player: number): void {
+    setup(x: number, y: number, rotation: number, player: unitai.PlayerId): void {
         // Set core state
         const body = <Body>this.body;
         this.unit.position = body.position;
@@ -66,7 +66,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         body.rotation = Phaser.Math.RAD_TO_DEG * rotation;
         this.commander.patrol(x, y);
         this.updateTint();
-        if (player !== 0) {
+        if (player !== unitai.PlayerId.Player) {
             this.setDepth(-2);
         }
     }
@@ -122,13 +122,13 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.visible = this.isVisible(celestials);
     }
     isVisible(celestials: Celestial[]): boolean {
-        if (this.unit.player === 0) {
+        if (this.unit.player === unitai.PlayerId.Player) {
             return true;
         }
         for (let i = 0; i < celestials.length; ++i) {
             const celestial = celestials[i];
             const threshold = celestial.unit.radius + CelestialVisionRange;
-            if (celestial.unit.player === 0 &&
+            if (celestial.unit.player === unitai.PlayerId.Player &&
                 celestial.unit.position.distanceSq(this.unit.position) < threshold * threshold) {
                 return true;
             }
@@ -140,7 +140,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         for (let i = 0; i < candidates.length; ++i) {
             if (candidates[i].enable) {
                 const ship = <Ship>candidates[i].gameObject;
-                if (ship.unit.player === 0 &&
+                if (ship.unit.player === unitai.PlayerId.Player &&
                     ship.unit.position.distanceSq(this.unit.position) < ShipVisionRange * ShipVisionRange) {
                     return true;
                 }
@@ -275,14 +275,14 @@ export class Celestial extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene,
                 radius: number,
                 location: Orbit | Phaser.Math.Vector2,
-                player: number) {
+                player: unitai.PlayerId) {
         super(scene);
-        if (player !== 2) {
+        if (player !== unitai.PlayerId.Neutral) {
             const color = PlayerColors[player];
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
         }
         this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
-        if (player !== 2) {
+        if (player !== unitai.PlayerId.Neutral) {
             const enemyColor = PlayerColors[1-player];
             this.conquerArc = new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, enemyColor);
             this.conquerArc.visible = false;
@@ -326,7 +326,7 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.updateOrbit(dt);
         }
         // Conquering
-        if (this.unit.player !== 2 && this.isBeingConquered()) {
+        if (this.unit.player !== unitai.PlayerId.Neutral && this.isBeingConquered()) {
             this.updateConquered(dt);
         } else if (this.conquered > 0) {
             this.updateConquered(-dt);
@@ -339,7 +339,7 @@ export class Celestial extends Phaser.GameObjects.Container {
         if (this.conquered === ConquerTime) {
             this.scene.scene.transition({
                 "target": "end",
-                "data": {winner: this.unit.player === 0 ? -1 : 1},
+                "data": {winner: this.unit.player === unitai.PlayerId.Enemy ? 1 : -1},
                 "duration": 0
             });
             this.scene.scene.setActive(false);

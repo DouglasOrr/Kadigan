@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import * as objects from "./objects";
 import * as player from "./player";
+import * as unitai from "./unitai";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -102,12 +103,12 @@ export default class GameScene extends Phaser.Scene {
         // Demo scene
         const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0), 2);
         const playerMoon = this.spawnCelestial(50, {
-            center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, 0);
+            center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, unitai.PlayerId.Player);
         const enemyMoon = this.spawnCelestial(50, {
-            center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, 1);
+            center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, unitai.PlayerId.Enemy);
         this.players = [
-            new player.Player(0, playerMoon, this.ships),
-            new player.Player(1, enemyMoon, this.ships),
+            new player.Player(unitai.PlayerId.Player, playerMoon, this.ships),
+            new player.Player(unitai.PlayerId.Enemy, enemyMoon, this.ships),
         ];
 
         // Camera
@@ -135,12 +136,12 @@ export default class GameScene extends Phaser.Scene {
 
         const visions = [];
         this.ships.children.iterate((obj: objects.Ship) => {
-            if (obj.unit.player === 0) {
+            if (obj.unit.player === unitai.PlayerId.Player) {
                 visions.push(obj.vision.setPosition(obj.x, obj.y));
             }
         });
         this.celestials.forEach(celestial => {
-            if (celestial.unit.player === 0) {
+            if (celestial.unit.player === unitai.PlayerId.Player) {
                 visions.push(celestial.vision.setPosition(celestial.x, celestial.y));
             }
         });
@@ -159,7 +160,7 @@ export default class GameScene extends Phaser.Scene {
             },
         });
     }
-    spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: number): objects.Celestial {
+    spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: unitai.PlayerId): objects.Celestial {
         const celestial = new objects.Celestial(this, radius, location, player);
         this.celestials.push(celestial);
         this.add.existing(celestial);
@@ -291,7 +292,7 @@ export default class GameScene extends Phaser.Scene {
                 ) : this.physics.overlapCirc(pointer.worldX, pointer.worldY, 0);
             selected.forEach((obj) => {
                 const ship = <objects.Ship>obj.gameObject;
-                if (ship.active && ship.unit.player == 0) {
+                if (ship.active && ship.unit.player === unitai.PlayerId.Player) {
                     ship.select(true);
                     (<objects.ShipCommandLine>this.commandLines.get()).set(ship);
                 }
