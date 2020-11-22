@@ -82,24 +82,26 @@ export default class GameScene extends Phaser.Scene {
         this.panStartScroll = new Phaser.Math.Vector2();
 
         // Map
-        this.map = maps.twoPlanetsDemo(this);
-        this.map.celestials.forEach(c => { this.add.existing(c); });
+        this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
+        this.map = maps.twoPlanetsDemo(this, this.ships);
+        this.map.celestials.forEach(c => {this.add.existing(c);});
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
         const enemyMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Enemy);
-        this.cameras.main.centerOn(playerMoon.x, playerMoon.y);
-        this.cameras.main.zoom = 0.4;
+        const neutralMoons = this.map.celestials.filter(c => c.unit.player === unitai.PlayerId.Neutral);
 
         // Objects
-        this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
         this.players = [
-            new player.Player(unitai.PlayerId.Player, playerMoon, this.ships),
-            new player.Player(unitai.PlayerId.Enemy, enemyMoon, this.ships),
+            new player.ActivePlayer(this, unitai.PlayerId.Player, playerMoon),
+            new player.ActivePlayer(this, unitai.PlayerId.Enemy, enemyMoon),
+            ...neutralMoons.map(c => new player.NeutralPlayer(this, c)),
         ];
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
         this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
-        // Fog of war
+        // Camera
         const camera = this.cameras.main;
+        camera.centerOn(playerMoon.x, playerMoon.y);
+        camera.zoom = 0.4;
         this.fog = this.add.renderTexture(
             0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
         ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);

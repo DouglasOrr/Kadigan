@@ -1,10 +1,12 @@
 import Phaser from "phaser";
 import * as player from "./player";
 import * as economy from "./economy";
+import * as objects from "./objects";
+import * as unitai from "./unitai";
+
 
 // UI Utilities
 
-const SliderHitMargin = 20;
 type SliderCallback = (value: number) => void;
 
 class Slider extends Phaser.GameObjects.Container {
@@ -26,10 +28,12 @@ class Slider extends Phaser.GameObjects.Container {
         this.slider.setScale(width / this.slider.width);
         this.add(this.slider);
 
+        const vMargin = 35;
+        const hMargin = 10;
         this.setInteractive(
             new Phaser.Geom.Rectangle(
-                -width/2 - SliderHitMargin, -SliderHitMargin,
-                width + 2 * SliderHitMargin, height + 2 * SliderHitMargin),
+                -width/2 - hMargin, -vMargin,
+                width + 2 * hMargin, height + 2 * vMargin),
             Phaser.Geom.Rectangle.Contains,
         );
         this.dragging = true;
@@ -109,6 +113,8 @@ class Toggle extends Phaser.GameObjects.Rectangle {
 
 const HudWidth = 200;  // px
 const HudHeight = 100;  // px
+const ProductionBalanceFillColor = 0xff0000;
+const IncomeFillColor = 0x00ff00;
 
 class Hud extends Phaser.GameObjects.Container {
     time: Phaser.GameObjects.BitmapText;
@@ -118,12 +124,14 @@ class Hud extends Phaser.GameObjects.Container {
     incomeText: Phaser.GameObjects.BitmapText;
     productionBalance: ProgressColumn;
     productionBalanceText: Phaser.GameObjects.BitmapText;
+    rewardFlash: number | undefined;
     builtShips: Phaser.GameObjects.Arc[];
-    player: player.Player;
+    player: player.ActivePlayer;
 
-    constructor(scene: Phaser.Scene, player: player.Player) {
+    constructor(scene: Phaser.Scene, player: player.ActivePlayer) {
         super(scene);
         this.player = player;
+        this.rewardFlash = undefined;
 
         // Background
         const strokeW = 6;
@@ -145,10 +153,10 @@ class Hud extends Phaser.GameObjects.Container {
         this.slider = new Slider(scene, 30, padTop, 50, colHeight, this.onSpendingChange.bind(this));
         this.sliderText = new Phaser.GameObjects.BitmapText(
             scene, 30, textPadTop, "upheaval", "-- %", 14).setOrigin(0.5, 0).setTint(0x000000);
-        this.income = new ProgressColumn(scene, 80, padTop, 25, colHeight, 0x00ff00);
+        this.income = new ProgressColumn(scene, 80, padTop, 25, colHeight, IncomeFillColor);
         this.incomeText = new Phaser.GameObjects.BitmapText(
             scene, 80, textPadTop, "upheaval", "-.-", 14).setOrigin(0.5, 0).setTint(0x000000);
-        this.productionBalance = new ProgressColumn(scene, 115, padTop, 15, colHeight, 0xff0000);
+        this.productionBalance = new ProgressColumn(scene, 115, padTop, 15, colHeight, ProductionBalanceFillColor);
         this.productionBalanceText = new Phaser.GameObjects.BitmapText(
             scene, 115, textPadTop, "upheaval", "- s", 14).setOrigin(0.5, 0).setTint(0x000000);
         this.add([
@@ -217,9 +225,30 @@ class Hud extends Phaser.GameObjects.Container {
         this.productionBalanceText.setText(
             shipRate >= 100 ? "? s" : shipRate.toFixed(0) + " s");
     }
+    neutralKill() {
+        if (this.rewardFlash === undefined) {
+            this.rewardFlash = 3.0;  // s
+        }
+    }
+    update(dt: number) {
+        if (this.rewardFlash !== undefined) {
+            this.rewardFlash -= dt;
+            if (this.rewardFlash < 0) {
+                this.rewardFlash = undefined;
+                this.productionBalance.bar.fillColor = ProductionBalanceFillColor;
+                this.income.bar.fillColor = IncomeFillColor;
+            } else {
+                const state = this.scene.time.now % 200 < 100;  // ms
+                this.productionBalance.bar.fillColor = state ? 0xffffff : ProductionBalanceFillColor;
+                this.income.bar.fillColor = state ? 0xffffff : IncomeFillColor;
+            }
+        }
+    }
 }
 
 export default class HudScene extends Phaser.Scene {
+    hud: Hud;
+
     constructor() {
         super("hud");
     }
@@ -227,16 +256,27 @@ export default class HudScene extends Phaser.Scene {
         this.load.image("slider", "/assets/slider0.png");
         this.load.bitmapFont("upheaval", "/assets/upheaval_0.png", "/assets/upheaval.xml");
     }
-    create(data: {player: player.Player}): void {
-        const hud = new Hud(this, data.player);
-        this.add.existing(hud);
-        hud.updatePosition(this.cameras.main);
+    create(data: {player: player.ActivePlayer}): void {
+        this.hud = new Hud(this, data.player);
+        this.add.existing(this.hud);
+        this.hud.updatePosition(this.cameras.main);
         this.scale.on("resize", () => {
-            hud.updatePosition(this.cameras.main);
+            this.hud.updatePosition(this.cameras.main);
         }, this);
 
-        this.scene.manager.getScene("game").events.on("tickeconomy", (time: integer) => {
-            hud.tick(time);
+        const game = this.scene.manager.getScene("game");
+        game.events.on("tickeconomy", (time: integer) => {
+            this.hud.tick(time);
         }, this);
+        game.events.on("shipdestroyed", (destroyed: objects.Ship, destroyer: objects.Ship) => {
+            if (destroyed.unit.player === unitai.PlayerId.Neutral &&
+                destroyer.unit.player === unitai.PlayerId.Player) {
+                    this.hud.neutralKill();
+            }
+        }, this);
+    }
+    update(_time: number, delta: number): void {
+        const dt = delta/1000;
+        this.hud.update(dt);
     }
 }

@@ -155,7 +155,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         const candidates = <Body[]>this.scene.physics.overlapRect(
             this.x - LazerRange, this.y - LazerRange, 2 * LazerRange, 2 * LazerRange
         );
-        candidates.forEach((body => {
+        candidates.forEach(body => {
             if (body.enable) {
                 // We only put ships in the physics system
                 const ship = <Ship>body.gameObject;
@@ -168,11 +168,12 @@ export class Ship extends Phaser.GameObjects.Sprite {
                     }
                 }
             }
-        }));
+        });
         if (closestEnemy !== undefined) {
             (<ShipLazerLine>lazerLines.get()).set(this, closestEnemy);
             closestEnemy.health -= LazerDamage;
             if (closestEnemy.health <= 0) {
+                this.scene.events.emit("shipdestroyed", closestEnemy, this);
                 closestEnemy.kill();
             }
             this.charge = 0;
@@ -268,6 +269,7 @@ export interface Orbit {
 export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
+    ships: Phaser.GameObjects.Group;
     conquered: number;
     conquerArc: Phaser.GameObjects.Arc | undefined;
     vision: Phaser.GameObjects.Arc;
@@ -275,8 +277,11 @@ export class Celestial extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene,
                 radius: number,
                 location: Orbit | Phaser.Math.Vector2,
-                player: unitai.PlayerId) {
+                player: unitai.PlayerId,
+                ships: Phaser.GameObjects.Group) {
         super(scene);
+        this.ships = ships;
+
         if (player !== unitai.PlayerId.None) {
             const color = PlayerColors[player];
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
@@ -354,19 +359,19 @@ export class Celestial extends Phaser.GameObjects.Container {
         let nFriendly = 0;
         for (let i = 0; i < bodies.length; ++i) {
             const ship = <Ship>bodies[i].gameObject;
-            nFriendly += +(ship.unit.player == this.unit.player);
+            nFriendly += +(ship.unit.player === this.unit.player);
             if (nFriendly >= ConquerDefenders) {
                 return false;
             }
         }
         return bodies.length > 2 * nFriendly;
     }
-    spawn(ships: Phaser.GameObjects.Group): void {
+    spawn(): void {
         const a = Phaser.Math.PI2 * (Math.random() - .5);
         const r = unitai.orbitalRadius(this.unit);
         const x = this.x + r * Math.cos(a);
         const y = this.y + r * Math.sin(a);
-        const ship = <Ship>ships.get();
+        const ship = <Ship>this.ships.get();
         // Initially face outwards
         ship.setup(x, y, a, this.unit.player);
         ship.commander.orbit(this.unit);
