@@ -80,7 +80,7 @@ export default class GameScene extends Phaser.Scene {
         this.panStartScroll = new Phaser.Math.Vector2();
 
         // Map
-        this.map = maps.originalDemo(this);
+        this.map = maps.twoPlanetsDemo(this);
         this.map.celestials.forEach(c => { this.add.existing(c); });
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
         const enemyMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Enemy);
@@ -135,7 +135,7 @@ export default class GameScene extends Phaser.Scene {
 
         const visions = [];
         this.ships.children.iterate((obj: objects.Ship) => {
-            if (obj.unit.player === unitai.PlayerId.Player) {
+            if (obj.visible && obj.unit.player === unitai.PlayerId.Player) {
                 visions.push(obj.vision.setPosition(obj.x, obj.y));
             }
         });
