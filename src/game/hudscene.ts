@@ -36,7 +36,6 @@ class Slider extends Phaser.GameObjects.Container {
         this.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
         this.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
         this.on(Phaser.Input.Events.POINTER_OUT, this.onPointerOut, this);
-        this.emitValue();
     }
     emitValue() {
         this.callback(Phaser.Math.Clamp(1 - this.slider.y / this.trackLength, 0, 1));
@@ -112,6 +111,7 @@ const HudWidth = 200;  // px
 const HudHeight = 100;  // px
 
 class Hud extends Phaser.GameObjects.Container {
+    time: Phaser.GameObjects.BitmapText;
     slider: Slider;
     sliderText: Phaser.GameObjects.BitmapText;
     income: ProgressColumn;
@@ -125,25 +125,32 @@ class Hud extends Phaser.GameObjects.Container {
         super(scene);
         this.player = player;
 
+        // Background
         const strokeW = 6;
         this.add(new Phaser.GameObjects.Rectangle(scene, 0, 0, HudWidth + strokeW, HudHeight + strokeW)
             .setFillStyle(0xaaaaaa)
             .setOrigin(0, 0)
             .setStrokeStyle(strokeW, 0xffffff));
 
+        // Game time
+        this.time = new Phaser.GameObjects.BitmapText(
+            scene, HudWidth - 6, -6, "upheaval", "TT:TT", 14).setOrigin(1, 1).setTint(0xffffff);
+        this.add(this.time);
+
+        // Sliders
         const textPadTop = 6;
         const padTop = 30;
         const padBottom = 10;
         const colHeight = HudHeight - padTop - padBottom;
         this.slider = new Slider(scene, 30, padTop, 50, colHeight, this.onSpendingChange.bind(this));
         this.sliderText = new Phaser.GameObjects.BitmapText(
-            scene, 30, textPadTop, "upheaval", "-- %", 14).setOrigin(0.5, 0);
+            scene, 30, textPadTop, "upheaval", "-- %", 14).setOrigin(0.5, 0).setTint(0x000000);
         this.income = new ProgressColumn(scene, 80, padTop, 25, colHeight, 0x00ff00);
         this.incomeText = new Phaser.GameObjects.BitmapText(
-            scene, 80, textPadTop, "upheaval", "-.-", 14).setOrigin(0.5, 0);
+            scene, 80, textPadTop, "upheaval", "-.-", 14).setOrigin(0.5, 0).setTint(0x000000);
         this.productionBalance = new ProgressColumn(scene, 115, padTop, 15, colHeight, 0xff0000);
         this.productionBalanceText = new Phaser.GameObjects.BitmapText(
-            scene, 115, textPadTop, "upheaval", "- s", 14).setOrigin(0.5, 0);
+            scene, 115, textPadTop, "upheaval", "- s", 14).setOrigin(0.5, 0).setTint(0x000000);
         this.add([
             this.slider, this.sliderText,
             this.income, this.incomeText,
@@ -154,8 +161,7 @@ class Hud extends Phaser.GameObjects.Container {
             this.onHoldTogggle.bind(this)).setOrigin(0, 1));
         this.add(new Phaser.GameObjects.BitmapText(
             scene, 165, HudHeight - padBottom - 15, "upheaval", "HOLD", 14
-        ).setOrigin(0.5, 0.5));
-
+        ).setTint(0x000000).setOrigin(0.5, 0.5));
         const pipSpacing = 10;
         const pipOffset = HudHeight - padBottom - 40;
         this.builtShips = [];
@@ -170,9 +176,13 @@ class Hud extends Phaser.GameObjects.Container {
             }
         }
         this.add(this.builtShips);
+
+        // Set initial state
+        this.tick(0);
     }
     onSpendingChange(value: number) {
         this.player.account.spending = value;
+        this.updateSliders();
     }
     onHoldTogggle(value: boolean) {
         this.player.account.hold = value;
@@ -180,7 +190,16 @@ class Hud extends Phaser.GameObjects.Container {
     updatePosition(camera: Phaser.Cameras.Scene2D.Camera) {
         this.setPosition(camera.width - HudWidth, camera.height - HudHeight);
     }
-    update() {
+    tick(gameTime: integer) {
+        // Time
+        const minutes = String(Math.floor(gameTime / 60)).padStart(2, "0");
+        const seconds = String(gameTime % 60).padStart(2, "0");
+        this.time.setText(minutes + ":" + seconds);
+
+        // Sliders
+        this.updateSliders();
+    }
+    updateSliders() {
         const account = this.player.account;
         const ships = account.production / economy.ShipCost;
         const completeShips = Math.floor(ships);
@@ -201,8 +220,6 @@ class Hud extends Phaser.GameObjects.Container {
 }
 
 export default class HudScene extends Phaser.Scene {
-    hud: Hud;
-
     constructor() {
         super("hud");
     }
@@ -211,14 +228,15 @@ export default class HudScene extends Phaser.Scene {
         this.load.bitmapFont("upheaval", "/assets/upheaval_0.png", "/assets/upheaval.xml");
     }
     create(data: {player: player.Player}): void {
-        this.hud = new Hud(this, data.player);
-        this.add.existing(this.hud);
-        this.hud.updatePosition(this.cameras.main);
+        const hud = new Hud(this, data.player);
+        this.add.existing(hud);
+        hud.updatePosition(this.cameras.main);
         this.scale.on("resize", () => {
-            this.hud.updatePosition(this.cameras.main);
+            hud.updatePosition(this.cameras.main);
         }, this);
-    }
-    update(): void {
-        this.hud.update();
+
+        this.scene.manager.getScene("game").events.on("tickeconomy", (time: integer) => {
+            hud.tick(time);
+        }, this);
     }
 }

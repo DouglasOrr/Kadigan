@@ -5,7 +5,7 @@ type Body = Phaser.Physics.Arcade.Body;
 
 // General
 const ShipScale = 0.5;
-const PlayerColors = [0x8888ff, 0xff8888, 0xaaaaaa];
+const PlayerColors = [0x8888ff, 0xff8888, 0xffffff];
 const GravityPerRadius = 0.05;  // (au/s)/au
 const ConquerTime = 30; // s
 const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
@@ -277,12 +277,12 @@ export class Celestial extends Phaser.GameObjects.Container {
                 location: Orbit | Phaser.Math.Vector2,
                 player: unitai.PlayerId) {
         super(scene);
-        if (player !== unitai.PlayerId.Neutral) {
+        if (player !== unitai.PlayerId.None) {
             const color = PlayerColors[player];
             this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
         }
         this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
-        if (player !== unitai.PlayerId.Neutral) {
+        if (player === unitai.PlayerId.Player || player === unitai.PlayerId.Enemy) {
             const enemyColor = PlayerColors[1-player];
             this.conquerArc = new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, enemyColor);
             this.conquerArc.visible = false;
@@ -326,10 +326,12 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.updateOrbit(dt);
         }
         // Conquering
-        if (this.unit.player !== unitai.PlayerId.Neutral && this.isBeingConquered()) {
-            this.updateConquered(dt);
-        } else if (this.conquered > 0) {
-            this.updateConquered(-dt);
+        if (this.unit.player === unitai.PlayerId.Player || this.unit.player === unitai.PlayerId.Enemy) {
+            if (this.isBeingConquered()) {
+                this.updateConquered(dt);
+            } else if (this.conquered > 0) {
+                this.updateConquered(-dt);
+            }
         }
     }
     updateConquered(delta: number): void {

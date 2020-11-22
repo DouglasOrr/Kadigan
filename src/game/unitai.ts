@@ -41,6 +41,7 @@ export enum PlayerId {
     Player,
     Enemy,
     Neutral,
+    None,
 }
 
 export interface Celestial {

@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
 export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
+    gameTime: integer;
 
     map: maps.Map;
     ships: Phaser.GameObjects.Group;
@@ -54,6 +55,7 @@ export default class GameScene extends Phaser.Scene {
     create(data: Settings): void {
         this.settings = data;
         this.paused = false;
+        this.gameTime = 0;
 
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -112,17 +114,19 @@ export default class GameScene extends Phaser.Scene {
         }, this);
         this.time.addEvent({
             delay: 1000,
-            callback: () => {
-                if (!this.paused) {
-                    this.players.forEach(player => player.updateEconomy());
-                }
-            },
+            callback: this.tickEconomy,
             callbackScope: this,
             loop: true,
         });
         this.events.emit("updatecamera", this.cameras.main);
+        this.events.emit("tickeconomy", this.gameTime);
     }
     // Main loop
+    tickEconomy(): void {
+        this.players.forEach(player => player.updateEconomy());
+        this.gameTime += 1;
+        this.events.emit("tickeconomy", this.gameTime);
+    }
     preRender(): void {
         const camera = this.cameras.main;
         this.fog.setPosition(
@@ -188,8 +192,10 @@ export default class GameScene extends Phaser.Scene {
         this.paused = !this.paused;
         if (this.paused) {
             this.physics.pause();
+            this.time.paused = true;
         } else {
             this.physics.resume();
+            this.time.paused = false;
         }
     }
     changeZoom(delta: number): void {
