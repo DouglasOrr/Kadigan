@@ -28,4 +28,7 @@ const config = {
     disableContextMenu: true,
 };
 
-new Phaser.Game(config);
+declare global {
+    interface Window { game: Phaser.Game; }
+}
+window.game = new Phaser.Game(config);
