@@ -52,23 +52,6 @@ export default class GameScene extends Phaser.Scene {
         this.load.image("ship", "/assets/ship0.png");
     }
     create(data: Settings): void {
-        this.scene.manager.start("starfield").sendToBack("starfield");
-        this.game.events.on("prerender", this.preRender, this);
-        this.scale.on("resize", () => {
-            const camera = this.cameras.main;
-            this.fog.resize(camera.width / FogTextureDownscale, camera.height / FogTextureDownscale);
-        }, this);
-        this.time.addEvent({
-            delay: 1000,
-            callback: () => {
-                if (!this.paused) {
-                    this.players.forEach(player => player.updateEconomy());
-                }
-            },
-            callbackScope: this,
-            loop: true,
-        });
-
         this.settings = data;
         this.paused = false;
 
@@ -96,7 +79,8 @@ export default class GameScene extends Phaser.Scene {
             panUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
             panDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
         };
-        this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25);
+        this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25)
+            .setVisible(false);
         this.panStartPosition = new Phaser.Math.Vector2();
         this.panStartScroll = new Phaser.Math.Vector2();
 
@@ -115,13 +99,32 @@ export default class GameScene extends Phaser.Scene {
         this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
         this.cameras.main.centerOn(0, 700);
         this.cameras.main.zoom = 0.4;
-        this.events.emit("updatecamera", this.cameras.main);
 
         // Fog of war
         const camera = this.cameras.main;
         this.fog = this.add.renderTexture(
             0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
         ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);
+
+        // Wire everything up
+        this.scene.manager.start("starfield").sendToBack("starfield");
+        this.scene.manager.start("hud", {player: this.players[unitai.PlayerId.Player]});
+        this.game.events.on("prerender", this.preRender, this);
+        this.scale.on("resize", () => {
+            const camera = this.cameras.main;
+            this.fog.resize(camera.width / FogTextureDownscale, camera.height / FogTextureDownscale);
+        }, this);
+        this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                if (!this.paused) {
+                    this.players.forEach(player => player.updateEconomy());
+                }
+            },
+            callbackScope: this,
+            loop: true,
+        });
+        this.events.emit("updatecamera", this.cameras.main);
     }
     // Main loop
     preRender(): void {

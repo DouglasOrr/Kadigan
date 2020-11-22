@@ -2,7 +2,8 @@ import Phaser from "phaser"
 import TitleScreen from "./titlescene"
 import GameScene from "./game/scene"
 import StarfieldScene from "./starfieldscene"
-import EndScene from "./endscene";
+import HudScene from "./game/hudscene"
+import EndScene from "./endscene"
 
 const config = {
     type: Phaser.AUTO,
@@ -15,7 +16,8 @@ const config = {
         TitleScreen,
         GameScene,
         StarfieldScene,
-        EndScene
+        HudScene,
+        EndScene,
     ],
     physics: {
         default: "arcade",

@@ -3,8 +3,10 @@ import Phaser from "phaser";
 // Central resource is unit [j] - the "jam"
 export const CapitalDelay = 10;  // s
 export const ShipCost = 10;  // j
+export const MinIncome = 1;
+export const MaxIncome = 4;
 export function capitalToIncome(capital: number): number {
-    return 1 + 3 * (1 - Math.pow(2, -capital/100));
+    return MinIncome + (MaxIncome - MinIncome) * (1 - Math.pow(2, -capital/100));
 }
 
 export class Account {
