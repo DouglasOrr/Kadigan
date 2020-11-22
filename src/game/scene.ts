@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import * as objects from "./objects";
 import * as player from "./player";
 import * as unitai from "./unitai";
+import * as maps from "./maps";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -24,9 +25,9 @@ export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
 
-    players: player.Player[];
-    celestials: objects.Celestial[];
+    map: maps.Map;
     ships: Phaser.GameObjects.Group;
+    players: player.Player[];
     commandLines: Phaser.GameObjects.Group;
     lazerLines: Phaser.GameObjects.Group;
     fog: Phaser.GameObjects.RenderTexture;
@@ -43,7 +44,6 @@ export default class GameScene extends Phaser.Scene {
         zoomIn: Phaser.Input.Keyboard.Key,
         zoomOut: Phaser.Input.Keyboard.Key
     };
-    bounds: Phaser.Geom.Rectangle;
 
     constructor() {
         super("game");
@@ -54,11 +54,6 @@ export default class GameScene extends Phaser.Scene {
     create(data: Settings): void {
         this.settings = data;
         this.paused = false;
-
-        this.celestials = [];
-        this.ships = this.add.group({classType: () => new objects.Ship(this, this.celestials)});
-        this.commandLines = this.add.group({classType: objects.ShipCommandLine});
-        this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -84,21 +79,22 @@ export default class GameScene extends Phaser.Scene {
         this.panStartPosition = new Phaser.Math.Vector2();
         this.panStartScroll = new Phaser.Math.Vector2();
 
-        // Demo scene
-        const planet = this.spawnCelestial(500, new Phaser.Math.Vector2(0, 0), 2);
-        const playerMoon = this.spawnCelestial(50, {
-            center: planet, radius: 1200, angle: Math.PI/2, clockwise: true}, unitai.PlayerId.Player);
-        const enemyMoon = this.spawnCelestial(50, {
-            center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false}, unitai.PlayerId.Enemy);
+        // Map
+        this.map = maps.originalDemo(this);
+        this.map.celestials.forEach(c => { this.add.existing(c); });
+        const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
+        const enemyMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Enemy);
+        this.cameras.main.centerOn(playerMoon.x, playerMoon.y);
+        this.cameras.main.zoom = 0.4;
+
+        // Objects
+        this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
         this.players = [
             new player.Player(unitai.PlayerId.Player, playerMoon, this.ships),
             new player.Player(unitai.PlayerId.Enemy, enemyMoon, this.ships),
         ];
-
-        // Camera
-        this.bounds = new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000);
-        this.cameras.main.centerOn(0, 700);
-        this.cameras.main.zoom = 0.4;
+        this.commandLines = this.add.group({classType: objects.ShipCommandLine});
+        this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
         // Fog of war
         const camera = this.cameras.main;
@@ -106,7 +102,7 @@ export default class GameScene extends Phaser.Scene {
             0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
         ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);
 
-        // Wire everything up
+        // Wire up events
         this.scene.manager.start("starfield").sendToBack("starfield");
         this.scene.manager.start("hud", {player: this.players[unitai.PlayerId.Player]});
         this.game.events.on("prerender", this.preRender, this);
@@ -143,7 +139,7 @@ export default class GameScene extends Phaser.Scene {
                 visions.push(obj.vision.setPosition(obj.x, obj.y));
             }
         });
-        this.celestials.forEach(celestial => {
+        this.map.celestials.forEach(celestial => {
             if (celestial.unit.player === unitai.PlayerId.Player) {
                 visions.push(celestial.vision.setPosition(celestial.x, celestial.y));
             }
@@ -163,22 +159,16 @@ export default class GameScene extends Phaser.Scene {
             },
         });
     }
-    spawnCelestial(radius: number, location: objects.Orbit | Phaser.Math.Vector2, player: unitai.PlayerId): objects.Celestial {
-        const celestial = new objects.Celestial(this, radius, location, player);
-        this.celestials.push(celestial);
-        this.add.existing(celestial);
-        return celestial;
-    }
     update(_time: number, delta: number): void {
         const dt = delta / 1000;
         this.updateCamera(dt);
         if (!this.paused) {
-            this.celestials.forEach((celestial) => {
+            this.map.celestials.forEach((celestial) => {
                 celestial.update(dt);
             });
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active) {
-                    ship.update(dt, this.celestials, this.lazerLines);
+                    ship.update(dt, this.map.celestials, this.lazerLines);
                 }
             });
             this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
@@ -219,8 +209,8 @@ export default class GameScene extends Phaser.Scene {
         const panX = (+right - +left)
         camera.scrollX = Phaser.Math.Clamp(
             camera.scrollX + delta * panX,
-            this.bounds.left - camera.width*0.5,
-            this.bounds.right - camera.width*0.5,
+            this.map.bounds.left - camera.width*0.5,
+            this.map.bounds.right - camera.width*0.5,
         );
 
         const py = this.input.activePointer.y;
@@ -231,8 +221,8 @@ export default class GameScene extends Phaser.Scene {
         const panY = (+down - +up);
         camera.scrollY = Phaser.Math.Clamp(
             camera.scrollY + delta * panY,
-            this.bounds.top - camera.height*0.5,
-            this.bounds.bottom - camera.height*0.5,
+            this.map.bounds.top - camera.height*0.5,
+            this.map.bounds.bottom - camera.height*0.5,
         );
 
         const zoom = +this.keys.zoomIn.isDown - +this.keys.zoomOut.isDown;
@@ -306,7 +296,7 @@ export default class GameScene extends Phaser.Scene {
     onPointerUp(pointer: Phaser.Input.Pointer): void {
         this.onPointerUpOutside(pointer);
         if (pointer.rightButtonReleased()) {
-            const selectedCelstial = this.celestials.find((c) =>
+            const selectedCelstial = this.map.celestials.find((c) =>
                 Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.unit.radius
             );
             this.ships.children.iterate((ship: objects.Ship) => {
