@@ -17,7 +17,7 @@ const LazerRange = 500; // au
 const LazerTime = 0.1; // s
 
 // Visibility
-const ShipVisionRange = 500;
+const ShipVisionRange = 700;
 const CelestialVisionRange = 1000;
 
 export class Ship extends Phaser.GameObjects.Sprite {
@@ -25,8 +25,11 @@ export class Ship extends Phaser.GameObjects.Sprite {
     selected: boolean;
     health: number;
     charge: number;
+    visibleToPlayer: boolean;
+    visibleToEnemy: boolean;
     commander: unitai.Commander;
     vision: Phaser.GameObjects.Arc;
+    celestials: Celestial[];
 
     constructor(scene: Phaser.Scene, celestials: Celestial[]) {
         super(scene, 0, 0, "ship");
@@ -44,6 +47,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.charge = undefined;
         this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
         this.vision = new Phaser.GameObjects.Arc(scene, 0, 0, ShipVisionRange, 0, 360, false, 0x000000);
+        this.celestials = celestials;
         // Make sure we're initially inactive (need to call setup())
         this.kill();
     }
@@ -87,7 +91,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     updateTint(): void {
         this.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
     }
-    update(dt: number, celestials: Celestial[], lazerLines: Phaser.GameObjects.Group): void {
+    update(dt: number, lazerLines: Phaser.GameObjects.Group, fog: boolean): void {
         const body = <Body>this.body;
         this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
 
@@ -102,7 +106,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         );
 
         // Physics from gravity
-        celestials.forEach((celestial) => {
+        this.celestials.forEach((celestial) => {
             const distance = Phaser.Math.Distance.Between(body.x, body.y, celestial.x, celestial.y);
             const gravity = (
                 ((GravityPerRadius * celestial.unit.radius) ** 2)
@@ -119,18 +123,18 @@ export class Ship extends Phaser.GameObjects.Sprite {
         }
 
         // Visibility
-        this.visible = this.isVisible(celestials);
+        this.updateVisible();
+        this.visible = !fog || this.visibleToPlayer;
     }
-    isVisible(celestials: Celestial[]): boolean {
-        if (this.unit.player === unitai.PlayerId.Player) {
-            return true;
-        }
-        for (let i = 0; i < celestials.length; ++i) {
-            const celestial = celestials[i];
+    updateVisible(): void {
+        this.visibleToPlayer = (this.unit.player === unitai.PlayerId.Player);
+        this.visibleToEnemy = (this.unit.player === unitai.PlayerId.Enemy);
+        for (let i = 0; i < this.celestials.length; ++i) {
+            const celestial = this.celestials[i];
             const threshold = celestial.unit.radius + CelestialVisionRange;
-            if (celestial.unit.player === unitai.PlayerId.Player &&
-                celestial.unit.position.distanceSq(this.unit.position) < threshold * threshold) {
-                return true;
+            if (celestial.unit.position.distanceSq(this.unit.position) < threshold * threshold) {
+                this.visibleToPlayer = this.visibleToPlayer || (celestial.unit.player === unitai.PlayerId.Player);
+                this.visibleToEnemy = this.visibleToEnemy || (celestial.unit.player === unitai.PlayerId.Enemy);
             }
         }
         // Rough check using overlapRect (exact check follows)
@@ -140,13 +144,12 @@ export class Ship extends Phaser.GameObjects.Sprite {
         for (let i = 0; i < candidates.length; ++i) {
             if (candidates[i].enable) {
                 const ship = <Ship>candidates[i].gameObject;
-                if (ship.unit.player === unitai.PlayerId.Player &&
-                    ship.unit.position.distanceSq(this.unit.position) < ShipVisionRange * ShipVisionRange) {
-                    return true;
+                if (ship.unit.position.distanceSq(this.unit.position) < ShipVisionRange * ShipVisionRange) {
+                    this.visibleToPlayer = this.visibleToPlayer || (ship.unit.player === unitai.PlayerId.Player);
+                    this.visibleToEnemy = this.visibleToEnemy || (ship.unit.player === unitai.PlayerId.Enemy);
                 }
             }
         }
-        return false;
     }
     fireWeapon(lazerLines: Phaser.GameObjects.Group): void {
         let closestEnemy: Ship = undefined;
@@ -269,7 +272,7 @@ export interface Orbit {
 export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
-    spawnCount: number | undefined;
+    spawnCount: number;
     ships: Phaser.GameObjects.Group;
     conquered: number;
     conquerArc: Phaser.GameObjects.Arc | undefined;
@@ -279,7 +282,7 @@ export class Celestial extends Phaser.GameObjects.Container {
                 radius: number,
                 location: Orbit | Phaser.Math.Vector2,
                 player: unitai.PlayerId,
-                spawnCount: number | undefined,
+                spawnCount: number,
                 ships: Phaser.GameObjects.Group) {
         super(scene);
         this.ships = ships;

@@ -13,7 +13,7 @@ export default class TitleScreen extends Phaser.Scene {
             this.scene.transition({
                 "target": key,
                 "data": data,
-                "duration": 0
+                "duration": 0,
             });
         }.bind(this);
 
@@ -26,6 +26,9 @@ export default class TitleScreen extends Phaser.Scene {
                 const settings = {...game.DEFAULT_SETTINGS};
                 if (params.has("pointerpan")) {
                     settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+                }
+                if (params.has("fog")) {
+                    settings.fog = {true: true, false: false}[params.get("fog")];
                 }
                 switchScene("game", settings);
             }

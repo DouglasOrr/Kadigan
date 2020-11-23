@@ -2,23 +2,26 @@ import Phaser from "phaser";
 import * as objects from "./objects";
 import * as player from "./player";
 import * as unitai from "./unitai";
+import * as playerai from "./playerai";
 import * as maps from "./maps";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
-const PanSpeed = 500;   // au/s (at zoom=1)
+const PanSpeed = 500;  // au/s (at zoom=1)
 const WheelZoom = 1.2;
-const ZoomSpeed = 10;   // /s
-const MinDisplayWidth = 500;   // au
+const ZoomSpeed = 10;  // /s
+const MinDisplayWidth = 500;  // au
 const MaxDisplayWidth = 10000;  // au
 const FogTextureDownscale = 2;
 
 interface Settings {
     pointerPan: boolean;
+    fog: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-    pointerPan: true
+    pointerPan: true,
+    fog: true,
 };
 
 export default class GameScene extends Phaser.Scene {
@@ -29,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
     map: maps.Map;
     ships: Phaser.GameObjects.Group;
     players: player.Player[];
+    enemyAi: playerai.PlayerAI;
     commandLines: Phaser.GameObjects.Group;
     lazerLines: Phaser.GameObjects.Group;
     fog: Phaser.GameObjects.RenderTexture;
@@ -84,7 +88,8 @@ export default class GameScene extends Phaser.Scene {
 
         // Map
         this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
-        this.map = maps.twoPlanetsDemo(this, this.ships);
+        // this.map = maps.twoPlanetsDemo(this, this.ships);
+        this.map = maps.aiTestDemo(this, this.ships);
         this.map.celestials.forEach(c => {this.add.existing(c);});
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
         const enemyMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Enemy);
@@ -96,6 +101,7 @@ export default class GameScene extends Phaser.Scene {
             new player.ActivePlayer(this, unitai.PlayerId.Enemy, enemyMoon),
             ...neutralMoons.map(c => new player.NeutralPlayer(this, c)),
         ];
+        this.enemyAi = new playerai.PlayerAI(<player.ActivePlayer>this.players[1], this.map.celestials);
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
         this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
@@ -121,6 +127,12 @@ export default class GameScene extends Phaser.Scene {
             callbackScope: this,
             loop: true,
         });
+        this.time.addEvent({
+            delay: 200,
+            callback: this.tickAi,
+            callbackScope: this,
+            loop: true,
+        })
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
@@ -129,6 +141,15 @@ export default class GameScene extends Phaser.Scene {
         this.players.forEach(player => player.updateEconomy());
         this.gameTime += 1;
         this.events.emit("tickeconomy", this.gameTime);
+    }
+    tickAi(): void {
+        const visibleShips = [];
+        this.ships.children.iterate((ship: objects.Ship) => {
+            if (ship.active && ship.visibleToEnemy) {
+                visibleShips.push(ship);
+            }
+        });
+        this.enemyAi.update(visibleShips);
     }
     preRender(): void {
         const camera = this.cameras.main;
@@ -175,7 +196,7 @@ export default class GameScene extends Phaser.Scene {
             });
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active) {
-                    ship.update(dt, this.map.celestials, this.lazerLines);
+                    ship.update(dt, this.lazerLines, this.settings.fog);
                 }
             });
             this.commandLines.children.iterate((line: objects.ShipCommandLine) => {

@@ -10,13 +10,13 @@ export interface Map {
 export function originalDemo(scene: Phaser.Scene, ships: Phaser.GameObjects.Group): Map {
     const planet = new objects.Celestial(scene, 500,
         new Phaser.Math.Vector2(0, 0),
-        unitai.PlayerId.None, undefined, ships);
+        unitai.PlayerId.None, 0, ships);
     const playerMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1200, angle: Math.PI/2, clockwise: true},
-        unitai.PlayerId.Player, undefined, ships);
+        unitai.PlayerId.Player, 3, ships);
     const enemyMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false},
-        unitai.PlayerId.Enemy, undefined, ships);
+        unitai.PlayerId.Enemy, 3, ships);
     return {
         bounds: new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000),
         celestials: [planet, playerMoon, enemyMoon],
@@ -32,11 +32,11 @@ function twoPlanetsPart(scene: Phaser.Scene, hand: number, player: unitai.Player
 
     const planet = new objects.Celestial(scene, 400,
         new Phaser.Math.Vector2(hand * 1500, 0),
-        unitai.PlayerId.None, undefined, ships);
+        unitai.PlayerId.None, 0, ships);
 
     const playerMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1200, angle: angle(Math.PI), clockwise: hand < 0},
-        player, undefined, ships);
+        player, 3, ships);
 
     const innerMoon0 = new objects.Celestial(scene, 42,
         {center: planet, radius: 600, angle: angle(0.6), clockwise: !playerMoon.orbit.clockwise},
@@ -64,5 +64,16 @@ export function twoPlanetsDemo(scene: Phaser.Scene, ships: Phaser.GameObjects.Gr
     return {
         bounds: new Phaser.Geom.Rectangle(-3000, -2000, 6000, 4000),
         celestials: celestials,
+    };
+}
+
+export function aiTestDemo(scene: Phaser.Scene, ships: Phaser.GameObjects.Group): Map {
+    const player = new objects.Celestial(scene, 50,
+        new Phaser.Math.Vector2(-1000, 0), unitai.PlayerId.Player, 10, ships);
+    const enemy = new objects.Celestial(scene, 50,
+        new Phaser.Math.Vector2(1000, 0), unitai.PlayerId.Enemy, 10, ships);
+    return {
+        bounds: new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000),
+        celestials: [player, enemy],
     };
 }
