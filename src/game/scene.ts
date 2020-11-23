@@ -67,6 +67,7 @@ export default class GameScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on("down", () => this.scale.toggleFullscreen(), this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on("down", this.showDebug, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R).on("down", this.selectAll, this);
         this.keys = {
             selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
             zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
@@ -241,6 +242,17 @@ export default class GameScene extends Phaser.Scene {
         if (panX !== 0 || panY !== 0 || zoom !== 0) {
             this.events.emit("updatecamera", this.cameras.main);
         }
+    }
+    selectAll(): void {
+        this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
+            line.unset();
+        })
+        this.ships.children.iterate((ship: objects.Ship) => {
+            if (ship.unit.player === unitai.PlayerId.Player) {
+                ship.select(true);
+                (<objects.ShipCommandLine>this.commandLines.get()).set(ship);
+            }
+        });
     }
     onPointerDown(pointer: Phaser.Input.Pointer): void {
         if (pointer.leftButtonDown()) {
