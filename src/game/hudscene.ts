@@ -257,6 +257,8 @@ export default class HudScene extends Phaser.Scene {
         this.load.bitmapFont("upheaval", "/assets/upheaval_0.png", "/assets/upheaval.xml");
     }
     create(data: {player: player.ActivePlayer}): void {
+        this.input.manager.globalTopOnly = false;
+
         this.hud = new Hud(this, data.player);
         this.add.existing(this.hud);
         this.hud.updatePosition(this.cameras.main);
