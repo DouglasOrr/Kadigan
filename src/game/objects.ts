@@ -12,9 +12,9 @@ const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies
 
 // Weapons
 const LazerRecharge = 1.0; // s
-const LazerDamage = 0.3; // (i.e. 1/0.3 = 4 shots to kill)
-const LazerRange = 300; // au
-const LazerTime = 0.2; // s
+const LazerDamage = 1/20; // (20 shots to kill)
+const LazerRange = 500; // au
+const LazerTime = 0.1; // s
 
 // Visibility
 const ShipVisionRange = 500;
@@ -269,6 +269,7 @@ export interface Orbit {
 export class Celestial extends Phaser.GameObjects.Container {
     unit: unitai.Celestial;
     orbit: Orbit;
+    spawnCount: number | undefined;
     ships: Phaser.GameObjects.Group;
     conquered: number;
     conquerArc: Phaser.GameObjects.Arc | undefined;
@@ -278,9 +279,11 @@ export class Celestial extends Phaser.GameObjects.Container {
                 radius: number,
                 location: Orbit | Phaser.Math.Vector2,
                 player: unitai.PlayerId,
+                spawnCount: number | undefined,
                 ships: Phaser.GameObjects.Group) {
         super(scene);
         this.ships = ships;
+        this.spawnCount = spawnCount;
 
         if (player !== unitai.PlayerId.None) {
             const color = PlayerColors[player];

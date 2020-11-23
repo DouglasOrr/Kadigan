@@ -5,10 +5,6 @@ import * as unitai from "./unitai";
 
 const StartingShips = 3;
 
-function neutralShips(radius: number) {
-    return Math.max(3, Math.floor(radius / 10));
-}
-
 export interface Player {
     // Called once per second to generate income & spawn ships
     updateEconomy(): void;
@@ -53,8 +49,7 @@ export class NeutralPlayer {
     }
     spawn(): void {
         this.respawn = undefined;
-        const nShips = neutralShips(this.celestial.unit.radius);
-        for (let i = 0; i < nShips; ++i) {
+        for (let i = 0; i < this.celestial.spawnCount; ++i) {
             this.celestial.spawn();
         }
     }
@@ -74,7 +69,7 @@ export class NeutralPlayer {
                 return ship.unit.player === unitai.PlayerId.Neutral;
             });
             if (!hasNeutral) {
-                this.respawn = Phaser.Math.Between(90, 180);
+                this.respawn = Phaser.Math.Between(90, 120);
             }
         }
     }

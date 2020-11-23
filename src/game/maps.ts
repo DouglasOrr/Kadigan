@@ -10,13 +10,13 @@ export interface Map {
 export function originalDemo(scene: Phaser.Scene, ships: Phaser.GameObjects.Group): Map {
     const planet = new objects.Celestial(scene, 500,
         new Phaser.Math.Vector2(0, 0),
-        unitai.PlayerId.None, ships);
+        unitai.PlayerId.None, undefined, ships);
     const playerMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1200, angle: Math.PI/2, clockwise: true},
-        unitai.PlayerId.Player, ships);
+        unitai.PlayerId.Player, undefined, ships);
     const enemyMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1700, angle: -Math.PI/2, clockwise: false},
-        unitai.PlayerId.Enemy, ships);
+        unitai.PlayerId.Enemy, undefined, ships);
     return {
         bounds: new Phaser.Geom.Rectangle(-2000, -2000, 4000, 4000),
         celestials: [planet, playerMoon, enemyMoon],
@@ -32,27 +32,27 @@ function twoPlanetsPart(scene: Phaser.Scene, hand: number, player: unitai.Player
 
     const planet = new objects.Celestial(scene, 400,
         new Phaser.Math.Vector2(hand * 1500, 0),
-        unitai.PlayerId.None, ships);
+        unitai.PlayerId.None, undefined, ships);
 
     const playerMoon = new objects.Celestial(scene, 50,
         {center: planet, radius: 1200, angle: angle(Math.PI), clockwise: hand < 0},
-        player, ships);
+        player, undefined, ships);
 
     const innerMoon0 = new objects.Celestial(scene, 42,
         {center: planet, radius: 600, angle: angle(0.6), clockwise: !playerMoon.orbit.clockwise},
-        unitai.PlayerId.Neutral, ships);
+        unitai.PlayerId.Neutral, 6, ships);
 
     const innerMoon1 = new objects.Celestial(scene, 60,
         {center: planet, radius: 600, angle: angle(-1.7), clockwise: !playerMoon.orbit.clockwise},
-        unitai.PlayerId.Neutral, ships);
+        unitai.PlayerId.Neutral, 15, ships);
 
     const innerMoon2 = new objects.Celestial(scene, 57,
         {center: planet, radius: 850, angle: angle(1.3), clockwise: playerMoon.orbit.clockwise},
-        unitai.PlayerId.Neutral, ships);
+        unitai.PlayerId.Neutral, 10, ships);
 
     const outerMoon0 = new objects.Celestial(scene, 25,
         {center: planet, radius: 1400, angle: angle(-1.0), clockwise: playerMoon.orbit.clockwise},
-        unitai.PlayerId.Neutral, ships);
+        unitai.PlayerId.Neutral, 4, ships);
 
     return [planet, playerMoon, innerMoon0, innerMoon1, innerMoon2, outerMoon0];
 }
