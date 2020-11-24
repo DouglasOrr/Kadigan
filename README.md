@@ -4,7 +4,7 @@
 
 ## Getting started
 
-To host the dev server at http://localhost:1234?scene=game&pointerpan=false&fog=false
+To host the dev server at http://localhost:1234/?scene=game&pointerpan=false&fog=false&debugai=true
 
 ```bash
 ./run build

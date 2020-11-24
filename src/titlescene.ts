@@ -30,6 +30,9 @@ export default class TitleScreen extends Phaser.Scene {
                 if (params.has("fog")) {
                     settings.fog = {true: true, false: false}[params.get("fog")];
                 }
+                if (params.has("debugai")) {
+                    settings.debugAi = {true: true, false: false}[params.get("debugai")];
+                }
                 switchScene("game", settings);
             }
             if (scene === "end") {

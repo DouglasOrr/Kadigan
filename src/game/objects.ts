@@ -13,7 +13,7 @@ const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies
 // Weapons
 const LazerRecharge = 1.0; // s
 const LazerDamage = 1/20; // (20 shots to kill)
-export const LazerRange = 500; // au
+export const LazerRange = 400; // au
 const LazerTime = 0.1; // s
 
 // Visibility
@@ -320,9 +320,20 @@ export class Celestial extends Phaser.GameObjects.Container {
             this.updateOrbit(0); // Set {this.x, this.y}
         }
     }
-    updateOrbit(dt: number): void {
+    angularSpeed(): number {
         const direction = (1 - 2 * +this.orbit.clockwise);
-        const angularSpeed = direction * GravityPerRadius * this.orbit.center.unit.radius / this.orbit.radius;
+        return direction * GravityPerRadius * this.orbit.center.unit.radius / this.orbit.radius;
+    }
+    futurePosition(dt: number, out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+        const angle = this.orbit.angle + dt * this.angularSpeed();
+        const rcos = this.orbit.radius * Math.cos(angle);
+        const rsin = this.orbit.radius * Math.sin(angle);
+        const x = this.orbit.center.x + rcos;
+        const y = this.orbit.center.y + rsin;
+        return out.set(x, y);
+    }
+    updateOrbit(dt: number): void {
+        const angularSpeed = this.angularSpeed();
         this.orbit.angle += angularSpeed * dt;
         const rcos = this.orbit.radius * Math.cos(this.orbit.angle);
         const rsin = this.orbit.radius * Math.sin(this.orbit.angle);

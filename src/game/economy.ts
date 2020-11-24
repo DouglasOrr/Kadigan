@@ -9,6 +9,9 @@ export const MaxIncome = 4; // j/s
 export function capitalToIncome(capital: number): number {
     return MinIncome + (MaxIncome - MinIncome) * (1 - Math.pow(2, -capital/180));
 }
+export function breakEvenTime(capital: number): number {
+    return CapitalDelay + 1 / (capitalToIncome(capital + 1) - capitalToIncome(capital));
+}
 
 export class Account {
     // Controls
@@ -18,25 +21,25 @@ export class Account {
     // Attibutes (do not modify outside class)
     capital: number;  // j (total realized investment)
     production: number;  // j (current production account balance)
-    _investments: number[];  // [j]
+    investments: number[];  // [j]
 
     constructor() {
         this.spending = 0.5;
         this.hold = false;
         this.capital = 0;
         this.production = 0;
-        this._investments = [];
+        this.investments = [0];
     }
     addIncome(income: number): void {
         const spending = Phaser.Math.Clamp(this.spending, 0, 1);
         this.production += spending * income;
-        this._investments[this._investments.length - 1] += (1 - spending) * income;
+        this.investments[this.investments.length - 1] += (1 - spending) * income;
     }
     update(): integer {
-        if (this._investments.length === CapitalDelay) {
-            this.capital += this._investments.shift();
+        if (this.investments.length === CapitalDelay) {
+            this.capital += this.investments.shift();
         }
-        this._investments.push(0);
+        this.investments.push(0);
         this.addIncome(capitalToIncome(this.capital));
 
         if (this.hold) {
@@ -48,5 +51,9 @@ export class Account {
     }
     creditNeutralKill(): void {
         this.addIncome(NeutralReward);
+    }
+    // Capital plus current "queued" investment
+    futureCapital(): number {
+        return this.capital + this.investments.reduce((x, y) => x + y, 0);
     }
 }

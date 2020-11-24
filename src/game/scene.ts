@@ -17,11 +17,13 @@ const FogTextureDownscale = 2;
 interface Settings {
     pointerPan: boolean;
     fog: boolean;
+    debugAi: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
     pointerPan: true,
     fog: true,
+    debugAi: false,
 };
 
 export default class GameScene extends Phaser.Scene {
@@ -88,8 +90,8 @@ export default class GameScene extends Phaser.Scene {
 
         // Map
         this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
-        // this.map = maps.twoPlanetsDemo(this, this.ships);
-        this.map = maps.aiTestDemo(this, this.ships);
+        this.map = maps.twoPlanetsDemo(this, this.ships);
+        // this.map = maps.aiTestDemo(this, this.ships);
         this.map.celestials.forEach(c => {this.add.existing(c);});
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
         const enemyMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Enemy);
@@ -101,7 +103,8 @@ export default class GameScene extends Phaser.Scene {
             new player.ActivePlayer(this, unitai.PlayerId.Enemy, enemyMoon),
             ...neutralMoons.map(c => new player.NeutralPlayer(this, c)),
         ];
-        this.enemyAi = new playerai.PlayerAI(<player.ActivePlayer>this.players[1], this.map.celestials);
+        this.enemyAi = new playerai.PlayerAI(
+            this, <player.ActivePlayer>this.players[1], this.map.celestials, this.settings.debugAi);
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
         this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
@@ -154,7 +157,7 @@ export default class GameScene extends Phaser.Scene {
                 }
             }
         });
-        this.enemyAi.update(aiShips, visibleShips);
+        this.enemyAi.update(this.gameTime, aiShips, visibleShips);
     }
     preRender(): void {
         const camera = this.cameras.main;
