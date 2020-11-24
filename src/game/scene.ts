@@ -143,13 +143,18 @@ export default class GameScene extends Phaser.Scene {
         this.events.emit("tickeconomy", this.gameTime);
     }
     tickAi(): void {
+        const aiShips = [];
         const visibleShips = [];
         this.ships.children.iterate((ship: objects.Ship) => {
-            if (ship.active && ship.visibleToEnemy) {
-                visibleShips.push(ship);
+            if (ship.active) {
+                if (ship.unit.player === unitai.PlayerId.Enemy) {
+                    aiShips.push(ship);
+                } else if (ship.visibleToEnemy) {
+                    visibleShips.push(ship);
+                }
             }
         });
-        this.enemyAi.update(visibleShips);
+        this.enemyAi.update(aiShips, visibleShips);
     }
     preRender(): void {
         const camera = this.cameras.main;

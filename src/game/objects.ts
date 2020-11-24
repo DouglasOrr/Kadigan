@@ -13,7 +13,7 @@ const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies
 // Weapons
 const LazerRecharge = 1.0; // s
 const LazerDamage = 1/20; // (20 shots to kill)
-const LazerRange = 500; // au
+export const LazerRange = 500; // au
 const LazerTime = 0.1; // s
 
 // Visibility
