@@ -4,6 +4,7 @@ import GameScene from "./game/scene"
 import StarfieldScene from "./starfieldscene"
 import HudScene from "./game/hudscene"
 import EndScene from "./endscene"
+import LaunchScreen from "./launchscreen"
 
 const config = {
     type: Phaser.AUTO,
@@ -14,6 +15,7 @@ const config = {
     },
     scene: [
         TitleScreen,
+        LaunchScreen,
         GameScene,
         StarfieldScene,
         HudScene,
