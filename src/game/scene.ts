@@ -43,6 +43,7 @@ export default class GameScene extends Phaser.Scene {
     panStartPosition: Phaser.Math.Vector2;
     panStartScroll: Phaser.Math.Vector2;
     keys: {
+        selectAll: Phaser.Input.Keyboard.Key,
         selectMultiple: Phaser.Input.Keyboard.Key,
         panLeft: Phaser.Input.Keyboard.Key,
         panRight: Phaser.Input.Keyboard.Key,
@@ -73,8 +74,8 @@ export default class GameScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on("down", () => this.scale.toggleFullscreen(), this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on("down", this.showDebug, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R).on("down", this.selectAll, this);
         this.keys = {
+            selectAll: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R),
             selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
             zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
             zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
@@ -198,6 +199,9 @@ export default class GameScene extends Phaser.Scene {
     update(_time: number, delta: number): void {
         const dt = delta / 1000;
         this.updateCamera(dt);
+        if (this.keys.selectAll.isDown) {
+            this.selectAll();
+        }
         if (!this.paused) {
             this.map.celestials.forEach((celestial) => {
                 celestial.update(dt);

@@ -7,7 +7,8 @@ import * as economy from "./economy";
 // Fast forward into the future & try to discover the time of closest approach
 function getClosestApproachTime(src: objects.Celestial, dest: objects.Celestial,
     interval: number, limit: number) {
-    if (src.orbit.center.orbit !== undefined || dest.orbit.center.orbit !== undefined) {
+    if ((src.orbit !== undefined && src.orbit.center.orbit !== undefined) ||
+        (dest.orbit !== undefined && dest.orbit.center.orbit !== undefined)) {
         console.warn("Cannot forecast 'double orbits'");
         return limit;
     }
@@ -26,156 +27,242 @@ function getClosestApproachTime(src: objects.Celestial, dest: objects.Celestial,
     return closestTime;
 }
 
-// State is a priority order of commands to follow
-interface State {
-    patrol: Phaser.Math.Vector2 | undefined;
-    orbit: unitai.Celestial | undefined;
+function closest(center: Phaser.Math.Vector2, ships: objects.Ship[], out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    let closest: objects.Ship;
+    let closestDistanceSq = Infinity;
+    for (let i = 0; i < ships.length; ++i) {
+        const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
+            center, ships[i].unit.position);
+        if (distanceSq < closestDistanceSq) {
+            closest = ships[i];
+            closestDistanceSq = distanceSq;
+        }
+    }
+    return out.copy(closest.unit.position);
+}
+
+function countInRadius(center: Phaser.Math.Vector2, radius: number, ships: objects.Ship[]): integer {
+    let count = 0;
+    for (let i = 0; i < ships.length; ++i) {
+        const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
+            center, ships[i].unit.position);
+        count += +(distanceSq < radius * radius);
+    }
+    return count;
+}
+
+function meanInRadius(center: Phaser.Math.Vector2, radius: number, ships: objects.Ship[],
+    out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    let x = 0;
+    let y = 0;
+    let count = 0;
+    for (let i = 0; i < ships.length; ++i) {
+        const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
+            center, ships[i].unit.position);
+        if (distanceSq < radius * radius) {
+            count += 1;
+            x += ships[i].unit.position.x;
+            y += ships[i].unit.position.y;
+        }
+    }
+    return out.set(x / count, y / count);
+}
+
+function getPointAtDistance(position: Phaser.Math.Vector2, target: Phaser.Math.Vector2,
+    targetDistance: number, out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    const currentDistance = Phaser.Math.Distance.BetweenPoints(position, target);
+    return out.copy(target)
+        .subtract(position)
+        .scale((currentDistance - targetDistance) / currentDistance)
+        .add(position);
+}
+
+enum PlanType {
+    Wait,
+    Invade,
+}
+
+interface Plan {
+    type: PlanType;
+    time?: integer;
+    target?: objects.Celestial;
+}
+
+enum ActionType {
+    Move,
+    Group,
+    Attack,
+    Retreat,
+}
+
+interface Action {
+    type: ActionType,
+    patrol: Phaser.Math.Vector2,
+    orbit: objects.Celestial,
 }
 
 export class PlayerAI {
     player: player.ActivePlayer;
     celestials: objects.Celestial[];
     opponentHome: objects.Celestial;
-    state: State;
-    nextAttackTime: integer;
+    plan: Plan;
+    action: Action;
     debugText?: Phaser.GameObjects.Text;
 
     constructor(scene: Phaser.Scene, player: player.ActivePlayer, celestials: objects.Celestial[],
         debug: boolean) {
+        this.player = player;
+        this.celestials = celestials;
+        this.opponentHome = celestials.find(c => c.unit.player === unitai.PlayerId.Player);
+        this.plan = {type: PlanType.Wait, time: 0, target: undefined};
+        this.action = {
+            type: ActionType.Move,
+            patrol: new Phaser.Math.Vector2,
+            orbit: this.player.home,
+        }
+        this.replan(0);
+
         if (debug) {
             const hud = scene.scene.manager.getScene("hud");
             this.debugText = hud.add.text(hud.cameras.main.width - 10, 10, "<debug>", {
                 fontSize: 13,
             }).setOrigin(1, 0);
         }
-
-        this.player = player;
-        this.celestials = celestials;
-        this.opponentHome = celestials.find(c => c.unit.player === unitai.PlayerId.Player);
-        this.state = {
-            patrol: undefined,
-            orbit: this.player.home.unit,
-        };
-        this.nextAttackTime = 0;
     }
     updateDebug(time: integer): void {
-        let currentCommand = "none";
-        if (this.state.patrol !== undefined) {
-            currentCommand = `patrol(${this.state.patrol.x.toFixed(0)}, ${this.state.patrol.y.toFixed(0)})`
-        } else if (this.state.orbit !== undefined) {
-            const owner = unitai.PlayerId[this.state.orbit.player];
-            currentCommand = `orbit(${owner})`
+        let planStr: string;
+        if (this.plan.type === PlanType.Wait) {
+            planStr = `Wait(${(this.plan.time - time).toFixed(0)}s)`
+        } else {
+            planStr = `Invade(${unitai.PlayerId[this.plan.target.unit.player]})`
+        }
+        let actionStr: string;
+        if (this.action.type === ActionType.Move) {
+            actionStr = `Move(${unitai.PlayerId[this.action.orbit.unit.player]})`
+        } else {
+            const v = this.action.patrol;
+            actionStr = `${ActionType[this.action.type]}(${v.x.toFixed(0)}, ${v.y.toFixed(0)})`
         }
         const spending = 100 * this.player.account.spending;
-        const nextAttack = (this.nextAttackTime - time);
         const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
         this.debugText.setText([
-            currentCommand,
-            `prod: ${spending.toFixed(0)}%`,
-            `next: ${nextAttack}s`,
-            `even: ${breakEven.toFixed(0)}s`,
+            planStr,
+            `prod: ${spending.toFixed(0)}% (${breakEven.toFixed(0)}s)`,
+            actionStr,
         ]);
     }
-    objectivePosition(): Phaser.Math.Vector2 {
-        // Reverse priority order - highest level objective first
-        if (this.state.orbit !== undefined) {
-            return this.state.orbit.position;
-        }
-        return this.state.patrol;
+    replan(time: integer): void {
+        this.plan.type = PlanType.Wait;
+        // TODO - plan for neutrals too
+        const approachTime = getClosestApproachTime(this.player.home, this.opponentHome, 30, 300);
+        this.plan.time = time + Math.max(60, approachTime);
+        this.plan.target = this.opponentHome;
     }
     updatePlan(time: integer): void {
-        if (this.nextAttackTime <= time) {
-            // TODO - work out what to do?
-            this.nextAttackTime = getClosestApproachTime(this.player.home, this.opponentHome, 30, 300);
+        if (this.plan.type === PlanType.Wait && this.plan.time < time) {
+            this.plan.type = PlanType.Invade;
+            this.plan.time = time + 120;
         }
-        if (time < this.nextAttackTime) {
-            this.state.orbit = this.player.home.unit;
-        } else {
-            this.state.orbit = this.opponentHome.unit;
+        // TODO - use "outnumbered" rather than "timeout" to swap out of "Invade"
+        if (this.plan.type === PlanType.Invade && this.plan.time < time) {
+            this.replan(time);
         }
     }
     updateEconomy(time: integer): void {
-        const timeToAttack = this.nextAttackTime - time;
-        const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
-        this.player.account.spending = breakEven < timeToAttack ? 0 : 1;
+        if (this.plan.type === PlanType.Wait) {
+            const timeToInvade = this.plan.time - time;
+            const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
+            this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
+        } else {
+            // Invade => keep producing ships!
+            this.player.account.spending = 1;
+        }
     }
-    updateShipCommand(myShips: objects.Ship[], otherShips: objects.Ship[]): void {
-        if (myShips.length === 0) {
+    objective(): objects.Celestial {
+        if (this.plan.type === PlanType.Wait) {
+            return this.player.home;
+        }
+        return this.plan.target;
+    }
+    updateShipCommand(friendlies: objects.Ship[], enemies: objects.Ship[]): void {
+        if (friendlies.length === 0) {
             return; // No ships to command
         }
 
         // Elect a leader - who has the most friendly ships within radius
         let leader: objects.Ship;
-        let nearbyCount = -1;
-        for (let i = 0; i < myShips.length; ++i) {
-            const position = myShips[i].unit.position;
-            let count = 0;
-            for (let j = 0; j < i; ++j) {
-                const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
-                    position, myShips[j].unit.position);
-                count += +(distanceSq < 150 * 150);
-            }
-            if (count > nearbyCount) {
-                leader = myShips[i];
-                nearbyCount = count;
+        let leaderCount = -1;
+        for (let i = 0; i < friendlies.length; ++i) {
+            const count = countInRadius(friendlies[i].unit.position, 150, friendlies);
+            if (count > leaderCount) {
+                leader = friendlies[i];
+                leaderCount = count;
             }
         }
-
         // Debugging utility
         // myShips.forEach(ship => ship.select(false));
         // leader.select(true);
 
-        // Have we finished grouping up?
-        const grouped = 0.75 <= nearbyCount / myShips.length;
-        if (this.state.patrol !== undefined && grouped) {
-            this.state.patrol = undefined;
+        const NearbyThreshold = objects.ShipVisionRange + 200;
+        const nearbyEnemies = countInRadius(leader.unit.position, NearbyThreshold, enemies);
+        const nearbyFriendlies = countInRadius(leader.unit.position, NearbyThreshold, friendlies);
+
+        // RETREAT
+        if (nearbyFriendlies * 1.5 < nearbyEnemies) {
+            this.action.type = ActionType.Retreat;
+            const enemyCenter = meanInRadius(
+                leader.unit.position, NearbyThreshold, enemies, this.action.patrol);
+            this.action.patrol = getPointAtDistance(
+                leader.unit.position, enemyCenter, objects.LazerRange * 1.2, enemyCenter);
+            return;
         }
 
-        // Do we need to group up?
-        const objectivePosition = this.objectivePosition();
+        // ATTACK
+        if (3 <= nearbyEnemies) {
+            this.action.type = ActionType.Attack;
+            const closestEnemy = closest(leader.unit.position, enemies, this.action.patrol);
+            this.action.patrol = getPointAtDistance(
+                leader.unit.position, closestEnemy, objects.LazerRange * 0.8, closestEnemy);
+            return;
+        }
+
+        // GROUP
+        const grouped = 0.75 <= leaderCount / friendlies.length;
+        const objective = this.objective();
         const distanceToObjective = Phaser.Math.Distance.BetweenPoints(
-            leader.unit.position, objectivePosition);
-        if (600 < distanceToObjective && this.state.patrol === undefined && !grouped) {
-            this.state.patrol = new Phaser.Math.Vector2(objectivePosition)
+            leader.unit.position, objective);
+        if (this.action.type === ActionType.Group && !grouped) {
+            // Already grouping - keep the current group command
+            return;
+        }
+        if (this.action.type !== ActionType.Group && !grouped && 600 < distanceToObjective) {
+            // Start grouping
+            this.action.type = ActionType.Group;
+            this.action.patrol.copy(objective.unit.position)
                 .subtract(leader.unit.position)
                 .scale(300/distanceToObjective)
                 .add(leader.unit.position);
+            return;
         }
 
-        // Do we need to cluster for an attack?
-        if (this.state.patrol === undefined && 3 <= otherShips.length) {
-            let closestOther: objects.Ship;
-            let closestDistanceSq = Infinity;
-            for (let i = 0; i < otherShips.length; ++i) {
-                const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
-                    leader.unit.position, otherShips[i].unit.position);
-                if (distanceSq < closestDistanceSq) {
-                    closestDistanceSq = distanceSq;
-                    closestOther = otherShips[i];
-                }
-            }
-            const closestDistance = Math.sqrt(closestDistanceSq);
-            this.state.patrol = new Phaser.Math.Vector2(closestOther.unit.position)
-                .subtract(leader.unit.position)
-                .scale((closestDistance - objects.LazerRange * 0.8) / closestDistance)
-                .add(leader.unit.position);
-        }
-
-        // Execute the chosen command
-        myShips.forEach(ship => {
-            if (this.state.patrol !== undefined) {
-                ship.commander.patrol(this.state.patrol.x, this.state.patrol.y);
-            } else if (this.state.orbit !== undefined) {
-                ship.commander.orbit(this.state.orbit);
-            }
-        });
+        // MOVE
+        this.action.type = ActionType.Move;
+        this.action.orbit = objective;
     }
-    update(time: integer, myShips: objects.Ship[], otherShips: objects.Ship[]): void {
+    update(time: integer, friendlies: objects.Ship[], enemies: objects.Ship[]): void {
         this.updatePlan(time);
         this.updateEconomy(time);
-        this.updateShipCommand(myShips, otherShips);
+        this.updateShipCommand(friendlies, enemies);
         if (this.debugText !== undefined) {
             this.updateDebug(time);
         }
+        // Execute the chosen command
+        friendlies.forEach(ship => {
+            if (this.action.type === ActionType.Move) {
+                ship.commander.orbit(this.action.orbit.unit);
+            } else {
+                ship.commander.patrol(this.action.patrol.x, this.action.patrol.y);
+            }
+        });
     }
 }

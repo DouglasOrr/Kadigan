@@ -17,8 +17,8 @@ export const LazerRange = 400; // au
 const LazerTime = 0.1; // s
 
 // Visibility
-const ShipVisionRange = 700;
-const CelestialVisionRange = 1000;
+export const ShipVisionRange = 700;
+export const CelestialVisionRange = 1000;
 
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
@@ -325,6 +325,9 @@ export class Celestial extends Phaser.GameObjects.Container {
         return direction * GravityPerRadius * this.orbit.center.unit.radius / this.orbit.radius;
     }
     futurePosition(dt: number, out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+        if (this.orbit === undefined) {
+            return this.unit.position;
+        }
         const angle = this.orbit.angle + dt * this.angularSpeed();
         const rcos = this.orbit.radius * Math.cos(angle);
         const rsin = this.orbit.radius * Math.sin(angle);
