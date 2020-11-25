@@ -270,10 +270,10 @@ export default class HudScene extends Phaser.Scene {
         game.events.on("tickeconomy", (time: integer) => {
             this.hud.tick(time);
         }, this);
-        game.events.on("shipdestroyed", (destroyed: objects.Ship, destroyer: objects.Ship) => {
-            if (destroyed.unit.player === unitai.PlayerId.Neutral &&
-                destroyer.unit.player === unitai.PlayerId.Player) {
-                    this.hud.neutralKill();
+        game.events.on("shipdestroyed", (killer: objects.Ship, victim: objects.Ship) => {
+            if (killer.unit.player === unitai.PlayerId.Player &&
+                victim.unit.player === unitai.PlayerId.Neutral) {
+                this.hud.neutralKill();
             }
         }, this);
     }

@@ -20,9 +20,9 @@ export class ActivePlayer implements Player {
         for (let i = 0; i < this.home.spawnCount; ++i) {
             this.home.spawn();
         }
-        scene.events.on("shipdestroyed", (destroyed: objects.Ship, destroyer: objects.Ship) => {
-            if (destroyed.unit.player === unitai.PlayerId.Neutral &&
-                destroyer.unit.player === id) {
+        scene.events.on("shipdestroyed", (killer: objects.Ship, victim: objects.Ship) => {
+            if (killer.unit.player === id &&
+                victim.unit.player === unitai.PlayerId.Neutral) {
                 this.account.creditNeutralKill();
             }
         });

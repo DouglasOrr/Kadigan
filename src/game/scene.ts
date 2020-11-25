@@ -4,6 +4,7 @@ import * as player from "./player";
 import * as unitai from "./unitai";
 import * as playerai from "./playerai";
 import * as maps from "./maps";
+import * as sound from "./sound";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -58,6 +59,7 @@ export default class GameScene extends Phaser.Scene {
     }
     preload(): void {
         this.load.image("ship", "/assets/ship0.png");
+        sound.preload(this.load);
     }
     create(data: Settings): void {
         this.settings = data;
@@ -88,6 +90,13 @@ export default class GameScene extends Phaser.Scene {
             .setVisible(false);
         this.panStartPosition = new Phaser.Math.Vector2();
         this.panStartScroll = new Phaser.Math.Vector2();
+
+        // Sound & effects
+        new sound.Playlist(this).play();
+        new sound.Sounds(this);
+        this.events.on("lazerfired", (src: objects.Ship, dest: objects.Ship) => {
+            (<objects.ShipLazerLine>this.lazerLines.get()).set(src, dest);
+        }, this);
 
         // Map
         this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
@@ -208,7 +217,7 @@ export default class GameScene extends Phaser.Scene {
             });
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active) {
-                    ship.update(dt, this.lazerLines, this.settings.fog);
+                    ship.update(dt, this.settings.fog);
                 }
             });
             this.commandLines.children.iterate((line: objects.ShipCommandLine) => {
@@ -361,6 +370,7 @@ export default class GameScene extends Phaser.Scene {
                     }
                 }
             });
+            this.events.emit("playercommand");
         }
     }
     onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {

@@ -91,7 +91,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     updateTint(): void {
         this.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
     }
-    update(dt: number, lazerLines: Phaser.GameObjects.Group, fog: boolean): void {
+    update(dt: number, fog: boolean): void {
         const body = <Body>this.body;
         this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
 
@@ -119,7 +119,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Weapon
         this.charge += dt;
         if (this.charge >= LazerRecharge) {
-            this.fireWeapon(lazerLines);
+            this.fireWeapon();
         }
 
         // Visibility
@@ -151,7 +151,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
             }
         }
     }
-    fireWeapon(lazerLines: Phaser.GameObjects.Group): void {
+    fireWeapon(): void {
         let closestEnemy: Ship = undefined;
         let closestDistanceSq: number = LazerRange * LazerRange;
         // Rough check using overlapRect (exact check follows)
@@ -173,10 +173,10 @@ export class Ship extends Phaser.GameObjects.Sprite {
             }
         });
         if (closestEnemy !== undefined) {
-            (<ShipLazerLine>lazerLines.get()).set(this, closestEnemy);
+            this.scene.events.emit("lazerfired", this, closestEnemy);
             closestEnemy.health -= LazerDamage;
             if (closestEnemy.health <= 0) {
-                this.scene.events.emit("shipdestroyed", closestEnemy, this);
+                this.scene.events.emit("shipdestroyed", this, closestEnemy);
                 closestEnemy.kill();
             }
             this.charge = 0;
