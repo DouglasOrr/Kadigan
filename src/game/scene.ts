@@ -59,6 +59,7 @@ export default class GameScene extends Phaser.Scene {
     }
     preload(): void {
         this.load.image("ship", "/assets/ship0.png");
+        this.load.image("ship_blur", "/assets/blur0.png");
         sound.preload(this.load);
     }
     create(data: Settings): void {
@@ -124,7 +125,7 @@ export default class GameScene extends Phaser.Scene {
         camera.zoom = 0.4;
         this.fog = this.add.renderTexture(
             0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
-        ).setOrigin(0.5, 0.5).setDepth(-1).setAlpha(0.6);
+        ).setOrigin(0.5, 0.5).setDepth(objects.Depth.Fog).setAlpha(0.6);
 
         // Wire up events
         this.scene.manager.start("starfield").sendToBack("starfield");
@@ -181,8 +182,13 @@ export default class GameScene extends Phaser.Scene {
 
         const visions = [];
         this.ships.children.iterate((obj: objects.Ship) => {
-            if (obj.visible && obj.unit.player === unitai.PlayerId.Player) {
-                visions.push(obj.vision.setPosition(obj.x, obj.y));
+            if (obj.visible) {
+                // Sync background position sync here too (for efficiency), since `preRender
+                // is the right place to do this
+                obj.syncBackgroundPosition();
+                if (obj.unit.player === unitai.PlayerId.Player) {
+                    visions.push(obj.vision.setPosition(obj.x, obj.y));
+                }
             }
         });
         this.map.celestials.forEach(celestial => {

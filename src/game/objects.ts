@@ -20,6 +20,19 @@ const LazerTime = 0.1; // s
 export const ShipVisionRange = 700;
 export const CelestialVisionRange = 1000;
 
+export enum Depth {
+    // Objects on top by default, so start the enum low!
+    Blur = -20,
+    ShipCommandLine,
+    ShipLazerLine,
+    OtherShip,
+    Fog,
+    Celestial,
+    PlayerShip,
+}
+
+const ShipSpriteRotation = 45;  // degrees - to rotate body to lay out sprite
+
 export class Ship extends Phaser.GameObjects.Sprite {
     unit: unitai.Ship;
     selected: boolean;
@@ -29,6 +42,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     visibleToEnemy: boolean;
     commander: unitai.Commander;
     vision: Phaser.GameObjects.Arc;
+    background: Phaser.GameObjects.Sprite;
     celestials: Celestial[];
 
     constructor(scene: Phaser.Scene, celestials: Celestial[]) {
@@ -46,7 +60,12 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.health = undefined;
         this.charge = undefined;
         this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
+        // Don't add `vision` to the scene - it's used for a separate render-to-texture
         this.vision = new Phaser.GameObjects.Arc(scene, 0, 0, ShipVisionRange, 0, 360, false, 0x000000);
+        this.background = scene.add.sprite(0, 0, "ship_blur")
+            .setDepth(Depth.Blur)
+            .setAlpha(0.5)
+            .setScale(3);
         this.celestials = celestials;
         // Make sure we're initially inactive (need to call setup())
         this.kill();
@@ -56,7 +75,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         const body = <Body>this.body;
         this.unit.position = body.position;
         this.unit.velocity = body.velocity;
-        this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
+        this.unit.rotation = Phaser.Math.DEG_TO_RAD * (body.rotation - ShipSpriteRotation);
         this.unit.player = player;
         this.selected = false;
         this.health = 1;
@@ -64,15 +83,15 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Enable: see kill()
         this.active = true;
         this.visible = true;
+        this.background.visible = true;
         body.enable = true;
         // Set initial state
         body.reset(x, y);
-        body.rotation = Phaser.Math.RAD_TO_DEG * rotation;
+        this.background.setPosition(x, y);
+        body.rotation = Phaser.Math.RAD_TO_DEG * rotation + ShipSpriteRotation;
         this.commander.patrol(x, y);
         this.updateTint();
-        if (player !== unitai.PlayerId.Player) {
-            this.setDepth(-2);
-        }
+        this.setDepth(player === unitai.PlayerId.Player ? Depth.PlayerShip : Depth.OtherShip);
     }
     kill(): void {
         const body = (<Body>this.body);
@@ -82,6 +101,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Disable: see setup()
         this.active = false;
         this.visible = false;
+        this.background.visible = false;
         body.enable = false;
     }
     select(selected: boolean): void {
@@ -89,11 +109,15 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.updateTint();
     }
     updateTint(): void {
-        this.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
+        this.background.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
+    }
+    syncBackgroundPosition(): void {
+        this.background.x = this.x;
+        this.background.y = this.y;
     }
     update(dt: number, fog: boolean): void {
         const body = <Body>this.body;
-        this.unit.rotation = Phaser.Math.DEG_TO_RAD * body.rotation;
+        this.unit.rotation = Phaser.Math.DEG_TO_RAD * (body.rotation - ShipSpriteRotation);
 
         // Controller
         this.commander.step(dt);
@@ -125,6 +149,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Visibility
         this.updateVisible();
         this.visible = !fog || this.visibleToPlayer;
+        this.background.visible = this.visible;
     }
     updateVisible(): void {
         this.visibleToPlayer = (this.unit.player === unitai.PlayerId.Player);
@@ -190,6 +215,7 @@ export class ShipCommandLine extends Phaser.GameObjects.Line {
     constructor(scene: Phaser.Scene) {
         super(scene);
         this.setOrigin(0, 0);
+        this.setDepth(Depth.ShipCommandLine);
         this.isStroked = true;
         this.strokeAlpha = 0.5;
         this.unset();
@@ -232,6 +258,7 @@ export class ShipLazerLine extends Phaser.GameObjects.Line {
     constructor(scene: Phaser.Scene) {
         super(scene);
         this.setOrigin(0, 0);
+        this.setDepth(Depth.ShipLazerLine);
         this.isStroked = true;
         this.strokeColor = 0xff0000;
         this.lineWidth = 2;
@@ -287,6 +314,7 @@ export class Celestial extends Phaser.GameObjects.Container {
         super(scene);
         this.ships = ships;
         this.spawnCount = spawnCount;
+        this.setDepth(Depth.Celestial);
 
         if (player !== unitai.PlayerId.None) {
             const color = PlayerColors[player];

@@ -20,6 +20,7 @@ export default class StarfieldScene extends Phaser.Scene {
             ));
         }
         tex.draw(stars);
+        this.updateCamera(this.cameras.main);
 
         this.scene.get("game").events.on("updatecamera", this.updateCamera, this);
     }
