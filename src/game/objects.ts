@@ -5,7 +5,7 @@ type Body = Phaser.Physics.Arcade.Body;
 
 // General
 const ShipScale = 0.5;
-const PlayerColors = [0x8888ff, 0xff8888, 0xffffff];
+const PlayerColors = [0x8888ff, 0xff8888, 0x888888];
 const GravityPerRadius = 0.05;  // (au/s)/au
 const ConquerTime = 30; // s
 const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
@@ -64,7 +64,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.vision = new Phaser.GameObjects.Arc(scene, 0, 0, ShipVisionRange, 0, 360, false, 0x000000);
         this.background = scene.add.sprite(0, 0, "ship_blur")
             .setDepth(Depth.Blur)
-            .setAlpha(0.5)
+            .setAlpha(0.35)
             .setScale(3);
         this.celestials = celestials;
         // Make sure we're initially inactive (need to call setup())
@@ -92,6 +92,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.commander.patrol(x, y);
         this.updateTint();
         this.setDepth(player === unitai.PlayerId.Player ? Depth.PlayerShip : Depth.OtherShip);
+        this.setFrame(0);
     }
     kill(): void {
         const body = (<Body>this.body);
@@ -150,6 +151,9 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.updateVisible();
         this.visible = !fog || this.visibleToPlayer;
         this.background.visible = this.visible;
+
+        // Animation
+        this.setFrame(0.5 <= this.commander.thrust ? 1 : 0);
     }
     updateVisible(): void {
         this.visibleToPlayer = (this.unit.player === unitai.PlayerId.Player);

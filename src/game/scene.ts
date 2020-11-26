@@ -58,7 +58,7 @@ export default class GameScene extends Phaser.Scene {
         super("game");
     }
     preload(): void {
-        this.load.image("ship", "/assets/ship0.png");
+        this.load.spritesheet("ship", "/assets/ship0.png", {frameWidth: 64});
         this.load.image("ship_blur", "/assets/blur0.png");
         sound.preload(this.load);
     }
