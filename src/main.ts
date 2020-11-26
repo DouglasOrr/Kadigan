@@ -1,10 +1,10 @@
 import Phaser from "phaser"
-import TitleScreen from "./titlescene"
-import GameScene from "./game/scene"
-import StarfieldScene from "./starfieldscene"
-import HudScene from "./game/hudscene"
-import EndScene from "./endscene"
+import TitleScreen from "./titlescreen"
 import LaunchScreen from "./launchscreen"
+import GameScene from "./game/scene"
+import HudScene from "./game/hudscene"
+import StarfieldScene from "./starfieldscene"
+import EndScene from "./endscene"
 
 const config = {
     type: Phaser.AUTO,
@@ -24,8 +24,8 @@ const config = {
     physics: {
         default: "arcade",
         arcade: {
-            gravity: { x: 0, y: 0 }
-        }
+            gravity: { x: 0, y: 0 },
+        },
     },
     disableContextMenu: true,
 };
