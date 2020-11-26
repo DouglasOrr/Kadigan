@@ -8,3 +8,8 @@
  - In "Export Options", use a 32-bit texture & select the preset "White text with alpha"
  - Change file format to "xml" and textures to "png"
  - Save & rename ".fnt" => ".xml"
+
+## GLSL
+
+ - VSCode extension "GLSL Lint"
+ - `apt install glslang-tools`

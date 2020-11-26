@@ -5,6 +5,7 @@ import GameScene from "./game/scene"
 import HudScene from "./game/hudscene"
 import StarfieldScene from "./starfieldscene"
 import EndScene from "./endscene"
+import ShaderTestScreen from "./shadertestscreen";
 
 const config = {
     type: Phaser.AUTO,
@@ -20,6 +21,7 @@ const config = {
         StarfieldScene,
         HudScene,
         EndScene,
+        ShaderTestScreen,
     ],
     physics: {
         default: "arcade",
