@@ -7,19 +7,14 @@ import * as unitai from "./unitai";
 
 // UI Utilities
 
-type SliderCallback = (value: number) => void;
-
 class Slider extends Phaser.GameObjects.Container {
     slider: Phaser.GameObjects.Sprite;
     dragging: boolean;
     trackLength: number;
-    callback: SliderCallback;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number,
-            callback: SliderCallback) {
+    constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number) {
         super(scene, x, y);
         this.trackLength = height;
-        this.callback = callback;
 
         // Keep this around for positioning
         // this.add(new Phaser.GameObjects.Rectangle(scene, 0, 0, 0.20 * width, height)
@@ -43,7 +38,11 @@ class Slider extends Phaser.GameObjects.Container {
         this.on(Phaser.Input.Events.POINTER_OUT, this.onPointerOut, this);
     }
     emitValue() {
-        this.callback(Phaser.Math.Clamp(1 - this.slider.y / this.trackLength, 0, 1));
+        this.emit("valuechange", Phaser.Math.Clamp(1 - this.slider.y / this.trackLength, 0, 1));
+    }
+    setValue(value: number) {
+        // This must not emitValue() as it could be caused by emitValue()
+        this.slider.y = Phaser.Math.Clamp(1 - value, 0, 1) * this.trackLength;
     }
     onPointerDown(pointer: Phaser.Input.Pointer, x: number, y: number) {
         if (pointer.leftButtonDown()) {
@@ -87,26 +86,23 @@ class ProgressColumn extends Phaser.GameObjects.Container {
 
 const ToggleOffColor = 0x880000;
 const ToggleOnColor = 0xff0000;
-type ToggleCallback = (value: boolean) => void;
 
 class Toggle extends Phaser.GameObjects.Rectangle {
     enabled: boolean;
-    callback: ToggleCallback;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number,
-        callback: ToggleCallback) {
+    constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number) {
         super(scene, x, y, width, height);
-        this.callback = callback;
-
         this.enabled = false;
         this.setFillStyle(ToggleOffColor).setStrokeStyle(3, 0x000000);
-
         this.setInteractive().on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
     }
-    onPointerUp() {
-        this.enabled = !this.enabled;
+    setEnabledState(state: boolean): void {
+        this.enabled = state;
         this.fillColor = this.enabled ? ToggleOnColor : ToggleOffColor;
-        this.callback(this.enabled);
+    }
+    onPointerUp() {
+        this.setEnabledState(!this.enabled);
+        this.emit("statechange", this.enabled);
     }
 }
 
@@ -119,6 +115,7 @@ class Hud extends Phaser.GameObjects.Container {
     time: Phaser.GameObjects.BitmapText;
     slider: Slider;
     sliderText: Phaser.GameObjects.BitmapText;
+    holdToggle: Toggle;
     income: ProgressColumn;
     incomeText: Phaser.GameObjects.BitmapText;
     productionBalance: ProgressColumn;
@@ -149,7 +146,7 @@ class Hud extends Phaser.GameObjects.Container {
         const padBottom = 5;
         const colHeight = this.height - padTop - padBottom;
         this.slider = new Slider(
-            scene, 67, padTop + 5, 50, colHeight - 10, this.onSpendingChange.bind(this));
+            scene, 67, padTop + 5, 50, colHeight - 10);
         this.sliderText = new Phaser.GameObjects.BitmapText(
             scene, 67, textPadTop, "dimbo", "-- %", 20).setOrigin(0.5, 0).setTint(0x000000);
         this.income = new ProgressColumn(
@@ -166,8 +163,9 @@ class Hud extends Phaser.GameObjects.Container {
             this.productionBalance, this.productionBalanceText]);
 
         // Hold
-        this.add(new Toggle(
-            scene, 190, this.height - padBottom, 50, 30, this.onHoldTogggle.bind(this)).setOrigin(0, 1));
+        this.holdToggle = new Toggle(
+            scene, 190, this.height - padBottom, 50, 30).setOrigin(0, 1);
+        this.add(this.holdToggle);
         this.add(new Phaser.GameObjects.BitmapText(
             scene, 190+50/2, this.height - padBottom - 15, "dimbo", "HOLD", 22
         ).setTint(0x000000).setOrigin(0.5, 0.5));
@@ -189,13 +187,6 @@ class Hud extends Phaser.GameObjects.Container {
 
         // Set initial state
         this.tick(0);
-    }
-    onSpendingChange(value: number) {
-        this.player.account.spending = value;
-        this.updateSliders();
-    }
-    onHoldTogggle(value: boolean) {
-        this.player.account.hold = value;
     }
     updatePosition(camera: Phaser.Cameras.Scene2D.Camera) {
         this.setPosition(camera.width - this.width, camera.height - this.height);
@@ -222,10 +213,13 @@ class Hud extends Phaser.GameObjects.Container {
         }
         this.income.update(income / economy.MaxIncome);
 
+        this.slider.setValue(account.spending);
         this.sliderText.setText((100 * account.spending).toFixed(0) + " %");
         this.incomeText.setText(income.toFixed(1));
         this.productionBalanceText.setText(
             shipRate >= 100 ? "? s" : shipRate.toFixed(0) + " s");
+
+        this.holdToggle.setEnabledState(account.hold);
     }
     neutralKill() {
         if (this.rewardFlash === undefined) {
@@ -271,9 +265,19 @@ export default class HudScene extends Phaser.Scene {
         }, this);
 
         const game = this.scene.manager.getScene("game");
-        game.events.on("tickeconomy", (time: integer) => {
-            this.hud.tick(time);
+
+        // Listen to hud
+        this.hud.slider.on("valuechange", value => {
+            game.events.emit("setplayerspending", value);
         }, this);
+        this.hud.holdToggle.on("statechange", () => {
+            game.events.emit("toggleplayerholdproduction");
+        }, this);
+
+        // Listen to game
+        game.events.on("playerspendingchanged", this.hud.updateSliders, this.hud);
+        game.events.on("playerholdproductionchanged", this.hud.updateSliders, this.hud);
+        game.events.on("tickeconomy", this.hud.tick, this.hud);
         game.events.on("shipdestroyed", (killer: objects.Ship, victim: objects.Ship) => {
             if (killer.unit.player === unitai.PlayerId.Player &&
                 victim.unit.player === unitai.PlayerId.Neutral) {

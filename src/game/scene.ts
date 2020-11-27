@@ -5,6 +5,7 @@ import * as unitai from "./unitai";
 import * as playerai from "./playerai";
 import * as maps from "./maps";
 import * as sound from "./sound";
+import * as keys from "./keys";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -43,16 +44,7 @@ export default class GameScene extends Phaser.Scene {
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
     panStartScroll: Phaser.Math.Vector2;
-    keys: {
-        selectAll: Phaser.Input.Keyboard.Key,
-        selectMultiple: Phaser.Input.Keyboard.Key,
-        panLeft: Phaser.Input.Keyboard.Key,
-        panRight: Phaser.Input.Keyboard.Key,
-        panUp: Phaser.Input.Keyboard.Key,
-        panDown: Phaser.Input.Keyboard.Key,
-        zoomIn: Phaser.Input.Keyboard.Key,
-        zoomOut: Phaser.Input.Keyboard.Key
-    };
+    keys: keys.Keys;
 
     constructor() {
         super("game");
@@ -85,19 +77,15 @@ export default class GameScene extends Phaser.Scene {
         this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUpOutside, this);
         this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.onPointerWheel, this);
 
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on("down", () => this.scale.toggleFullscreen(), this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on("down", this.showDebug, this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", this.togglePause, this);
-        this.keys = {
-            selectAll: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R),
-            selectMultiple: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
-            zoomIn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
-            zoomOut: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
-            panLeft: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-            panRight: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-            panUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-            panDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        };
+        this.keys = keys.addKeys(this.input.keyboard);
+        this.keys.setSpendingMax.on("down", () => this.events.emit("setplayerspending", 1.), this);
+        this.keys.setSpendingMin.on("down", () => this.events.emit("setplayerspending", 0.), this);
+        this.keys.holdProduction.on("down", () => this.events.emit("toggleplayerholdproduction"), this);
+        this.keys.toggleFullScreen.on("down", () => this.scale.toggleFullscreen(), this);
+        this.keys.togglePause.on("down", this.togglePause, this);
+        this.keys.toggleOptions.on("down", this.toggleOptions, this);
+        this.keys.showDebug.on("down", this.showDebug, this);
+
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25)
             .setVisible(false);
         this.panStartPosition = new Phaser.Math.Vector2();
@@ -157,11 +145,23 @@ export default class GameScene extends Phaser.Scene {
             callback: this.tickAi,
             callbackScope: this,
             loop: true,
-        })
+        });
+        this.events.on("setplayerspending", this.setPlayerSpending, this);
+        this.events.on("toggleplayerholdproduction", this.togglePlayerHoldProduction, this);
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
     // Main loop
+    setPlayerSpending(value: number): void {
+        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
+        player.account.spending = Phaser.Math.Clamp(value, 0, 1);
+        this.events.emit("playerspendingchanged", player.account.spending);
+    }
+    togglePlayerHoldProduction(): void {
+        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
+        player.account.hold = !player.account.hold;
+        this.events.emit("playerholdproductionchanged", player.account.hold);
+    }
     tickEconomy(): void {
         this.players.forEach(player => player.updateEconomy());
         this.gameTime += 1;
@@ -259,6 +259,10 @@ export default class GameScene extends Phaser.Scene {
             this.physics.resume();
             this.time.paused = false;
         }
+    }
+    toggleOptions(): void {
+        this.togglePause();
+        // TODO: show options menu
     }
     changeZoom(delta: number): void {
         const camera = this.cameras.main;
