@@ -16,15 +16,21 @@ export function preload(loader: Phaser.Loader.LoaderPlugin): void {
 export class Sounds {
     scene: Phaser.Scene;
     throttles: Float32Array;
+    enabled: boolean;
 
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
         this.throttles = new Float32Array(9).fill(0);
+        this.enabled = true;
         scene.events.on("playercommand", this.onCommand, this);
         scene.events.on("lazerfired", this.onLazerFired, this);
         scene.events.on("shipdestroyed", this.onShipDestoyed, this);
     }
+    setEnabled(enabled: boolean): void {
+        this.enabled = enabled;
+    }
     onLazerFired(src: objects.Ship, dest: objects.Ship): void {
+        if (!this.enabled) { return; }
         const camera = this.scene.cameras.main;
         const isPlayer = src.unit.player === unitai.PlayerId.Player;
         const isDestPlayer = dest.unit.player === unitai.PlayerId.Player;
@@ -79,6 +85,7 @@ export class Sounds {
         }
     }
     onShipDestoyed(killer: objects.Ship, victim: objects.Ship): void {
+        if (!this.enabled) { return; }
         const camera = this.scene.cameras.main;
         if (camera.worldView.contains(victim.x, victim.y)) {
             this.scene.sound.play("pop", {
@@ -87,6 +94,7 @@ export class Sounds {
         }
     }
     onCommand(): void {
+        if (!this.enabled) { return; }
         this.scene.sound.play("bleep", {volume: 0.1});
     }
 }
@@ -107,14 +115,22 @@ export class Playlist {
         });
         this.currentIndex = 0;
         // For testing
-        // scene.input.on("pointerdown", () => { this.stop(); this.onTrackComplete(); }, this);
-    }
-    stop(): void {
-        this.items[this.currentIndex].track.stop();
+        // scene.input.on("pointerdown", () => {
+        //     this.items[this.currentIndex].track.stop();
+        //     this.onTrackComplete();
+        // }, this);
     }
     play(): void {
         const item = this.items[this.currentIndex];
         item.track.play({volume: item.volume});
+    }
+    setPlaying(playing: boolean): void {
+        const item = this.items[this.currentIndex];
+        if (playing) {
+            item.track.resume();
+        } else {
+            item.track.pause();
+        }
     }
     onTrackComplete(): void {
         this.currentIndex = (this.currentIndex + 1) % this.items.length;

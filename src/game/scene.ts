@@ -41,6 +41,9 @@ export default class GameScene extends Phaser.Scene {
     lazerLines: Phaser.GameObjects.Group;
     fog: Phaser.GameObjects.RenderTexture;
 
+    playlist: sound.Playlist;
+    sounds: sound.Sounds;
+
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
     panStartScroll: Phaser.Math.Vector2;
@@ -83,7 +86,6 @@ export default class GameScene extends Phaser.Scene {
         this.keys.holdProduction.on("down", () => this.events.emit("toggleplayerholdproduction"), this);
         this.keys.toggleFullScreen.on("down", () => this.scale.toggleFullscreen(), this);
         this.keys.togglePause.on("down", this.togglePause, this);
-        this.keys.toggleOptions.on("down", this.startOptions, this);
         this.keys.showDebug.on("down", this.showDebug, this);
 
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25)
@@ -92,8 +94,9 @@ export default class GameScene extends Phaser.Scene {
         this.panStartScroll = new Phaser.Math.Vector2();
 
         // Sound & effects
-        new sound.Playlist(this).play();
-        new sound.Sounds(this);
+        this.playlist = new sound.Playlist(this)
+        this.playlist.play();
+        this.sounds = new sound.Sounds(this);
         this.events.on("lazerfired", (src: objects.Ship, dest: objects.Ship) => {
             (<objects.ShipLazerLine>this.lazerLines.get()).set(src, dest);
         }, this);
@@ -151,6 +154,8 @@ export default class GameScene extends Phaser.Scene {
         this.events.on("setplayerspending", this.setPlayerSpending, this);
         this.events.on("toggleplayerholdproduction", this.togglePlayerHoldProduction, this);
         this.events.on("conquercelestial", this.onConquerCelestial, this);
+        this.events.on("togglemusic", this.playlist.setPlaying, this.playlist);
+        this.events.on("togglesounds", this.sounds.setEnabled, this.sounds);
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
@@ -264,12 +269,6 @@ export default class GameScene extends Phaser.Scene {
             this.physics.resume();
             this.time.paused = false;
         }
-    }
-    startOptions(): void {
-        // This should be the opposite of `PauseScene.resumeGame()`
-        this.scene.pause("game");
-        this.scene.pause("hud");
-        this.scene.manager.run("ingameoptions");
     }
     onConquerCelestial(winner: unitai.PlayerId): void {
         this.scene.manager.start("end", {winner: winner === unitai.PlayerId.Player ? 1 : -1});

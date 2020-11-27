@@ -102,15 +102,17 @@ interface Action {
 }
 
 export class PlayerAI {
+    scene: Phaser.Scene;
     player: player.ActivePlayer;
     celestials: objects.Celestial[];
     opponentHome: objects.Celestial;
     plan: Plan;
     action: Action;
-    debugText?: Phaser.GameObjects.Text;
+    debug: boolean;
 
     constructor(scene: Phaser.Scene, player: player.ActivePlayer, celestials: objects.Celestial[],
         debug: boolean) {
+        this.scene = scene;
         this.player = player;
         this.celestials = celestials;
         this.opponentHome = celestials.find(c => c.unit.player === unitai.PlayerId.Player);
@@ -120,14 +122,8 @@ export class PlayerAI {
             patrol: new Phaser.Math.Vector2,
             orbit: this.player.home,
         }
+        this.debug = debug;
         this.replan(0);
-
-        if (debug) {
-            const hud = scene.scene.manager.getScene("hud");
-            this.debugText = hud.add.text(hud.cameras.main.width - 10, 10, "<debug>", {
-                fontSize: 13,
-            }).setOrigin(1, 0);
-        }
     }
     updateDebug(time: integer): void {
         let planStr: string;
@@ -145,7 +141,7 @@ export class PlayerAI {
         }
         const spending = 100 * this.player.account.spending;
         const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
-        this.debugText.setText([
+        this.scene.events.emit("aidebugtext", [
             planStr,
             `prod: ${spending.toFixed(0)}% (${breakEven.toFixed(0)}s)`,
             actionStr,
@@ -253,7 +249,7 @@ export class PlayerAI {
         this.updatePlan(time);
         this.updateEconomy(time);
         this.updateShipCommand(friendlies, enemies);
-        if (this.debugText !== undefined) {
+        if (this.debug) {
             this.updateDebug(time);
         }
         // Execute the chosen command

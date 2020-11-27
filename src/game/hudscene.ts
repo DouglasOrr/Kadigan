@@ -244,6 +244,7 @@ class Hud extends Phaser.GameObjects.Container {
 
 export default class HudScene extends Phaser.Scene {
     hud: Hud;
+    debugText?: Phaser.GameObjects.Text;
 
     constructor() {
         super("hud");
@@ -283,6 +284,15 @@ export default class HudScene extends Phaser.Scene {
                 victim.unit.player === unitai.PlayerId.Neutral) {
                 this.hud.neutralKill();
             }
+        }, this);
+        game.events.on("aidebugtext", (text: string[]) => {
+            // Lazy creation - the text object doesn't exist unless this event is fired
+            if (this.debugText === undefined) {
+                this.debugText = this.add.text(this.cameras.main.width - 10, 10, "<debug>", {
+                    fontSize: 13,
+                }).setOrigin(1, 0);
+            }
+            this.debugText.setText(text);
         }, this);
     }
     update(_time: number, delta: number): void {

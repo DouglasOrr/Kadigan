@@ -41,3 +41,19 @@ declare global {
     interface Window { game: Phaser.Game; }
 }
 window.game = new Phaser.Game(config);
+window.addEventListener("keydown", event => {
+    // This is a bit hacky - it's easy to run into race conditions
+    // doing this in the individual scenes (due to lifecycle issues)
+    if (event.code === "Escape") {
+        const gameScene = window.game.scene.getScene("game");
+        if (gameScene.scene.isActive()) {
+            window.game.scene.pause("hud");
+            window.game.scene.pause("game");
+            window.game.scene.run("ingameoptions");
+        } else {
+            window.game.scene.resume("hud");
+            window.game.scene.resume("game");
+            window.game.scene.sleep("ingameoptions");
+        }
+    }
+});

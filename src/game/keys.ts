@@ -27,7 +27,7 @@ export const Specs: KeySpec[] = [
 
     // Game state
     {command: "togglePause", description: "Pause/unpause", label: "SPACE"},
-    {command: "toggleOptions", description: "In-game options & help", label: "ESC"},
+    {command: "toggleOptions", description: "In-game options & help", label: "ESC"}, // special handling in main.ts
 
     // Dev
     {command: "showDebug", description: "Show debug info (JS console)", label: "O", hide: true},

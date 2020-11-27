@@ -130,6 +130,11 @@ export default class TitleScreen extends Phaser.Scene {
         const params = new URLSearchParams(window.location.search);
         if (params.has("scene")) {
             switchToScene(this, params);
+            return;
+        }
+        if (params.get("skiptitle") === "true") {
+            this.transitionToLaunch();
+            return;
         }
 
         const camera = this.cameras.main;
