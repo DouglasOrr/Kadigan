@@ -21,9 +21,10 @@ class Slider extends Phaser.GameObjects.Container {
         this.trackLength = height;
         this.callback = callback;
 
-        this.add(new Phaser.GameObjects.Rectangle(scene, 0, 0, 0.20 * width, height)
-            .setStrokeStyle(3, 0x222222)
-            .setOrigin(0.5, 0));
+        // Keep this around for positioning
+        // this.add(new Phaser.GameObjects.Rectangle(scene, 0, 0, 0.20 * width, height)
+        //     .setStrokeStyle(3, 0x222222)
+        //     .setOrigin(0.5, 0));
         this.slider = new Phaser.GameObjects.Sprite(scene, 0, height/2, "slider").setOrigin(0.5, 0.5);
         this.slider.setScale(width / this.slider.width);
         this.add(this.slider);
@@ -111,8 +112,6 @@ class Toggle extends Phaser.GameObjects.Rectangle {
 
 // Game logic
 
-const HudWidth = 200;  // px
-const HudHeight = 100;  // px
 const ProductionBalanceFillColor = 0xff0000;
 const IncomeFillColor = 0x00ff00;
 
@@ -125,7 +124,7 @@ class Hud extends Phaser.GameObjects.Container {
     productionBalance: ProgressColumn;
     productionBalanceText: Phaser.GameObjects.BitmapText;
     rewardFlash: number | undefined;
-    builtShips: Phaser.GameObjects.Arc[];
+    builtShips: Phaser.GameObjects.Sprite[];
     player: player.ActivePlayer;
 
     constructor(scene: Phaser.Scene, player: player.ActivePlayer) {
@@ -134,56 +133,59 @@ class Hud extends Phaser.GameObjects.Container {
         this.rewardFlash = undefined;
 
         // Background
-        const strokeW = 6;
-        this.add(new Phaser.GameObjects.Rectangle(scene, 0, 0, HudWidth + strokeW, HudHeight + strokeW)
-            .setFillStyle(0xaaaaaa)
-            .setOrigin(0, 0)
-            .setStrokeStyle(strokeW, 0xffffff));
+        const bg = new Phaser.GameObjects.Sprite(scene, 0, 0, "hud").setOrigin(0, 0);
+        this.width = bg.width;
+        this.height = bg.height;
+        this.add(bg);
 
         // Game time
         this.time = new Phaser.GameObjects.BitmapText(
-            scene, HudWidth - 6, -6, "upheaval", "TT:TT", 14).setOrigin(1, 1).setTint(0xffffff);
+            scene, this.width - 10, 5, "dimbo", "TT:TT", 22).setOrigin(1, 1).setTint(0xffffff);
         this.add(this.time);
 
         // Sliders
-        const textPadTop = 6;
-        const padTop = 30;
-        const padBottom = 10;
-        const colHeight = HudHeight - padTop - padBottom;
-        this.slider = new Slider(scene, 30, padTop, 50, colHeight, this.onSpendingChange.bind(this));
+        const textPadTop = 24;
+        const padTop = 48;
+        const padBottom = 5;
+        const colHeight = this.height - padTop - padBottom;
+        this.slider = new Slider(
+            scene, 67, padTop + 5, 50, colHeight - 10, this.onSpendingChange.bind(this));
         this.sliderText = new Phaser.GameObjects.BitmapText(
-            scene, 30, textPadTop, "upheaval", "-- %", 14).setOrigin(0.5, 0).setTint(0x000000);
-        this.income = new ProgressColumn(scene, 80, padTop, 25, colHeight, IncomeFillColor);
+            scene, 67, textPadTop, "dimbo", "-- %", 20).setOrigin(0.5, 0).setTint(0x000000);
+        this.income = new ProgressColumn(
+            scene, 115, padTop, 25, colHeight, IncomeFillColor);
         this.incomeText = new Phaser.GameObjects.BitmapText(
-            scene, 80, textPadTop, "upheaval", "-.-", 14).setOrigin(0.5, 0).setTint(0x000000);
-        this.productionBalance = new ProgressColumn(scene, 115, padTop, 15, colHeight, ProductionBalanceFillColor);
+            scene, 115, textPadTop, "dimbo", "-.-", 20).setOrigin(0.5, 0).setTint(0x000000);
+        this.productionBalance = new ProgressColumn(
+            scene, 155, padTop, 15, colHeight, ProductionBalanceFillColor);
         this.productionBalanceText = new Phaser.GameObjects.BitmapText(
-            scene, 115, textPadTop, "upheaval", "- s", 14).setOrigin(0.5, 0).setTint(0x000000);
+            scene, 155, textPadTop, "dimbo", "- s", 20).setOrigin(0.5, 0).setTint(0x000000);
         this.add([
             this.slider, this.sliderText,
             this.income, this.incomeText,
             this.productionBalance, this.productionBalanceText]);
 
         // Hold
-        this.add(new Toggle(scene, 140, HudHeight - padBottom, 50, 30,
-            this.onHoldTogggle.bind(this)).setOrigin(0, 1));
+        this.add(new Toggle(
+            scene, 190, this.height - padBottom, 50, 30, this.onHoldTogggle.bind(this)).setOrigin(0, 1));
         this.add(new Phaser.GameObjects.BitmapText(
-            scene, 165, HudHeight - padBottom - 15, "upheaval", "HOLD", 14
+            scene, 190+50/2, this.height - padBottom - 15, "dimbo", "HOLD", 22
         ).setTint(0x000000).setOrigin(0.5, 0.5));
-        const pipSpacing = 10;
-        const pipOffset = HudHeight - padBottom - 40;
+        const pipSpacing = 9.2;
+        const pipOffset = this.height - padBottom - 52;
         this.builtShips = [];
         for (let j = 0; j < 4; ++j) {
-            for (let i = 0; i < 5; ++i) {
-                    this.builtShips.push(
-                    new Phaser.GameObjects.Arc(
-                        scene, 145 + pipSpacing*i, pipOffset - pipSpacing*j,
-                        3, 0 ,360, false, 0xff0000
-                    ).setStrokeStyle(.5, 0x000000).setVisible(false)
+            for (let i = 0; i < 6; ++i) {
+                this.builtShips.push(
+                    new Phaser.GameObjects.Sprite(
+                        scene, 191 + pipSpacing*i, pipOffset - pipSpacing*j, "ship",
+                    ).setScale(0.3)
                 );
             }
         }
-        this.add(this.builtShips);
+        // We want `this.ships` in the order defined above, but added to scene in reverse
+        // order so that the overlaps are correct (earlier ships on top)
+        this.add([...this.builtShips].reverse());
 
         // Set initial state
         this.tick(0);
@@ -196,7 +198,7 @@ class Hud extends Phaser.GameObjects.Container {
         this.player.account.hold = value;
     }
     updatePosition(camera: Phaser.Cameras.Scene2D.Camera) {
-        this.setPosition(camera.width - HudWidth, camera.height - HudHeight);
+        this.setPosition(camera.width - this.width, camera.height - this.height);
     }
     tick(gameTime: integer) {
         // Time
@@ -253,8 +255,10 @@ export default class HudScene extends Phaser.Scene {
         super("hud");
     }
     preload(): void {
+        this.load.image("hud", "/assets/hud0.png");
         this.load.image("slider", "/assets/slider0.png");
-        this.load.bitmapFont("upheaval", "/assets/upheaval_0.png", "/assets/upheaval.xml");
+        this.load.spritesheet("ship", "/assets/ship0.png", {frameWidth: 64});
+        this.load.bitmapFont("dimbo", "/assets/dimbo_0.png", "/assets/dimbo.xml");
     }
     create(data: {player: player.ActivePlayer}): void {
         this.input.manager.globalTopOnly = false;

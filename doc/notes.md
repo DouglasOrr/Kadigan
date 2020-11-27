@@ -2,7 +2,7 @@
 
 ## Bitmap fonts
 
- - Find a good ttf font e.g. Upheaval
+ - Find a good ttf font
  - Use [bmfont](http://www.angelcode.com/products/bmfont/) (under Wine in Linux)
  - Select a subset of the characters (first few rows)
  - In "Export Options", use a 32-bit texture & select the preset "White text with alpha"
