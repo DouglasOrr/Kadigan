@@ -5,16 +5,35 @@ export default class EndScene extends Phaser.Scene {
         super("end");
     }
     create(data: {winner: number}): void {
-        let message = "Draw.";
+        let outcome = "Draw.";
+        let outcomeFadeDuration = 1000;
         if (data.winner === 1) {
-            message = "Victory.";
+            outcome = "Victory.";
+            outcomeFadeDuration = 500;
         }
         if (data.winner === -1) {
-            message = "Defeat.";
+            outcome = "Defeat.";
+            outcomeFadeDuration = 3000;
         }
-
         const camera = this.cameras.main;
-        this.add.rectangle(0, 0, camera.width, camera.height, 0x000000, 0.5).setOrigin(0, 0);
-        this.add.text(camera.width/2, camera.height/2, message).setOrigin(0.5, 0.5).setFontSize(40);
+        const bg = this.add.rectangle(0, 0, camera.width, camera.height, 0x000000, 0.5)
+            .setAlpha(0).setOrigin(0, 0);
+        const text = this.add.text(camera.width/2, camera.height/4, outcome)
+            .setAlpha(0).setOrigin(0.5, 0.5).setFontSize(40);
+
+        this.tweens.timeline()
+            .add({
+                targets: bg,
+                alpha: {from: 0, to: 1},
+                duration: 2000,
+                ease: "Power1",
+            })
+            .add({
+                targets: text,
+                alpha: {from: 0, to: 1},
+                duration: outcomeFadeDuration,
+                ease: "Power2",
+            })
+            .play();
     }
 }

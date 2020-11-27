@@ -19,7 +19,6 @@ const LazerTime = 0.1; // s
 // Visibility
 export const ShipVisionRange = 700;
 export const CelestialVisionRange = 1000;
-
 export enum Depth {
     // Objects on top by default, so start the enum low!
     Glow = -20,
@@ -31,6 +30,16 @@ export enum Depth {
     Fog,
     PlayerShip,
 }
+
+function getOpponent(player: unitai.PlayerId): unitai.PlayerId | undefined {
+    if (player === unitai.PlayerId.Player) {
+        return unitai.PlayerId.Enemy;
+    } else if (player === unitai.PlayerId.Enemy) {
+        return unitai.PlayerId.Player;
+    }
+}
+
+// Ship
 
 const ShipSpriteRotation = 45;  // degrees - to rotate body to lay out sprite
 
@@ -339,7 +348,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
 
         // Conquering indicator
         if (player === unitai.PlayerId.Player || player === unitai.PlayerId.Enemy) {
-            const enemyColor = PlayerColors[1-player];
+            const enemyColor = PlayerColors[getOpponent(player)];
             this.conquerIndicator = this.scene.add.graphics({
                 fillStyle: {color: enemyColor, alpha: 0.75},
             }).setDepth(Depth.ConquerIndicator).setVisible(false);
@@ -420,12 +429,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
                 .fillPath();
         }
         if (this.conquered === ConquerTime) {
-            this.scene.scene.transition({
-                "target": "end",
-                "data": {winner: this.unit.player === unitai.PlayerId.Enemy ? 1 : -1},
-                "duration": 0
-            });
-            this.scene.scene.setActive(false);
+            this.scene.events.emit("conquercelestial", getOpponent(this.unit.player));
         }
     }
     isBeingConquered(): boolean {

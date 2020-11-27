@@ -83,7 +83,7 @@ export default class GameScene extends Phaser.Scene {
         this.keys.holdProduction.on("down", () => this.events.emit("toggleplayerholdproduction"), this);
         this.keys.toggleFullScreen.on("down", () => this.scale.toggleFullscreen(), this);
         this.keys.togglePause.on("down", this.togglePause, this);
-        this.keys.toggleOptions.on("down", this.toggleOptions, this);
+        this.keys.toggleOptions.on("down", this.startOptions, this);
         this.keys.showDebug.on("down", this.showDebug, this);
 
         this.selectionBox = this.add.rectangle(60, 30, 1, 1, 0x8888ff, 0.25)
@@ -126,9 +126,11 @@ export default class GameScene extends Phaser.Scene {
             0, 0, camera.width / FogTextureDownscale, camera.height / FogTextureDownscale
         ).setOrigin(0.5, 0.5).setDepth(objects.Depth.Fog).setAlpha(0.6);
 
-        // Wire up events
+        // Start child scenes
         this.scene.manager.start("starfield").sendToBack("starfield");
         this.scene.manager.start("hud", {player: this.players[unitai.PlayerId.Player]});
+
+        // Wire up events
         this.game.events.on("prerender", this.preRender, this);
         this.scale.on("resize", () => {
             const camera = this.cameras.main;
@@ -148,20 +150,11 @@ export default class GameScene extends Phaser.Scene {
         });
         this.events.on("setplayerspending", this.setPlayerSpending, this);
         this.events.on("toggleplayerholdproduction", this.togglePlayerHoldProduction, this);
+        this.events.on("conquercelestial", this.onConquerCelestial, this);
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
     // Main loop
-    setPlayerSpending(value: number): void {
-        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
-        player.account.spending = Phaser.Math.Clamp(value, 0, 1);
-        this.events.emit("playerspendingchanged", player.account.spending);
-    }
-    togglePlayerHoldProduction(): void {
-        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
-        player.account.hold = !player.account.hold;
-        this.events.emit("playerholdproductionchanged", player.account.hold);
-    }
     tickEconomy(): void {
         this.players.forEach(player => player.updateEconomy());
         this.gameTime += 1;
@@ -212,16 +205,6 @@ export default class GameScene extends Phaser.Scene {
             this.fog.width * FogTextureDownscale, this.fog.height * FogTextureDownscale);
         this.fog.erase(visions);
     }
-    showDebug(): void {
-        const camera = this.cameras.main;
-        console.log({
-            fps: this.game.loop.actualFps,
-            camera: {
-                zoom: camera.zoom,
-                center: {x: camera.centerX, y: camera.centerY},
-            },
-        });
-    }
     update(_time: number, delta: number): void {
         const dt = delta / 1000;
         this.updateCamera(dt);
@@ -250,7 +233,29 @@ export default class GameScene extends Phaser.Scene {
         }
     }
     // Control
+    setPlayerSpending(value: number): void {
+        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
+        player.account.spending = Phaser.Math.Clamp(value, 0, 1);
+        this.events.emit("playerspendingchanged", player.account.spending);
+    }
+    togglePlayerHoldProduction(): void {
+        const player = <player.ActivePlayer>this.players[unitai.PlayerId.Player];
+        player.account.hold = !player.account.hold;
+        this.events.emit("playerholdproductionchanged", player.account.hold);
+    }
+    showDebug(): void {
+        const camera = this.cameras.main;
+        console.log({
+            fps: this.game.loop.actualFps,
+            camera: {
+                zoom: camera.zoom,
+                center: {x: camera.centerX, y: camera.centerY},
+            },
+        });
+    }
     togglePause(): void {
+        // We don't want to use scene.pause() because we still want a bit of interaction,
+        // camera movement, etc.
         this.paused = !this.paused;
         if (this.paused) {
             this.physics.pause();
@@ -260,9 +265,15 @@ export default class GameScene extends Phaser.Scene {
             this.time.paused = false;
         }
     }
-    toggleOptions(): void {
-        this.togglePause();
-        // TODO: show options menu
+    startOptions(): void {
+        // This should be the opposite of `PauseScene.resumeGame()`
+        this.scene.pause("game");
+        this.scene.pause("hud");
+        this.scene.manager.run("ingameoptions");
+    }
+    onConquerCelestial(winner: unitai.PlayerId): void {
+        this.scene.manager.start("end", {winner: winner === unitai.PlayerId.Player ? 1 : -1});
+        this.scene.setActive(false);
     }
     changeZoom(delta: number): void {
         const camera = this.cameras.main;

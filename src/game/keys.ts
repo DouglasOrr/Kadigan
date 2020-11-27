@@ -36,27 +36,30 @@ export const Specs: KeySpec[] = [
 type Key = Phaser.Input.Keyboard.Key;
 
 export interface Keys {
-    setSpendingMax: Key;
-    setSpendingMin: Key;
-    holdProduction: Key;
-    selectAll: Key;
-    selectMultiple: Key;
-    panLeft: Key;
-    panRight: Key;
-    panUp: Key;
-    panDown: Key;
-    zoomIn: Key;
-    zoomOut: Key;
-    toggleFullScreen: Key;
-    togglePause: Key;
-    toggleOptions: Key;
-    showDebug: Key;
+    setSpendingMax?: Key;
+    setSpendingMin?: Key;
+    holdProduction?: Key;
+    selectAll?: Key;
+    selectMultiple?: Key;
+    panLeft?: Key;
+    panRight?: Key;
+    panUp?: Key;
+    panDown?: Key;
+    zoomIn?: Key;
+    zoomOut?: Key;
+    toggleFullScreen?: Key;
+    togglePause?: Key;
+    toggleOptions?: Key;
+    showDebug?: Key;
 }
 
-export function addKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): Keys {
+export function addKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin,
+        filter?: (arg0: KeySpec) => boolean): Keys {
     const keys = {};
     Specs.forEach(spec => {
-        keys[spec.command] = keyboard.addKey(spec.code || Phaser.Input.Keyboard.KeyCodes[spec.label]);
+        if (filter === undefined || filter(spec)) {
+            keys[spec.command] = keyboard.addKey(spec.code || Phaser.Input.Keyboard.KeyCodes[spec.label]);
+        }
     });
-    return <Keys>keys;
+    return keys;
 }
