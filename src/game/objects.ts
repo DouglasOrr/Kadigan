@@ -5,7 +5,7 @@ type Body = Phaser.Physics.Arcade.Body;
 
 // General
 const ShipScale = 0.5;
-const PlayerColors = [0x8888ff, 0xff8888, 0x888888];
+const PlayerColors = [0x008888, 0xff8888, 0x888888, 0xcccccc];
 const GravityPerRadius = 0.05;  // (au/s)/au
 const ConquerTime = 30; // s
 const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
@@ -22,12 +22,13 @@ export const CelestialVisionRange = 1000;
 
 export enum Depth {
     // Objects on top by default, so start the enum low!
-    Blur = -20,
+    Glow = -20,
     ShipCommandLine,
     ShipLazerLine,
+    Celestial,
+    ConquerIndicator,
     OtherShip,
     Fog,
-    Celestial,
     PlayerShip,
 }
 
@@ -42,7 +43,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
     visibleToEnemy: boolean;
     commander: unitai.Commander;
     vision: Phaser.GameObjects.Arc;
-    background: Phaser.GameObjects.Sprite;
+    glow: Phaser.GameObjects.Sprite;
     celestials: Celestial[];
 
     constructor(scene: Phaser.Scene, celestials: Celestial[]) {
@@ -62,8 +63,9 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.commander = new unitai.Commander(this.unit, celestials.map(c => c.unit));
         // Don't add `vision` to the scene - it's used for a separate render-to-texture
         this.vision = new Phaser.GameObjects.Arc(scene, 0, 0, ShipVisionRange, 0, 360, false, 0x000000);
-        this.background = scene.add.sprite(0, 0, "ship_blur")
-            .setDepth(Depth.Blur)
+        this.glow = scene.add.sprite(0, 0, "ship")
+            .setFrame(2)
+            .setDepth(Depth.Glow)
             .setAlpha(0.35)
             .setScale(3);
         this.celestials = celestials;
@@ -83,11 +85,11 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Enable: see kill()
         this.active = true;
         this.visible = true;
-        this.background.visible = true;
+        this.glow.visible = true;
         body.enable = true;
         // Set initial state
         body.reset(x, y);
-        this.background.setPosition(x, y);
+        this.glow.setPosition(x, y);
         body.rotation = Phaser.Math.RAD_TO_DEG * rotation + ShipSpriteRotation;
         this.commander.patrol(x, y);
         this.updateTint();
@@ -102,7 +104,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Disable: see setup()
         this.active = false;
         this.visible = false;
-        this.background.visible = false;
+        this.glow.visible = false;
         body.enable = false;
     }
     select(selected: boolean): void {
@@ -110,11 +112,11 @@ export class Ship extends Phaser.GameObjects.Sprite {
         this.updateTint();
     }
     updateTint(): void {
-        this.background.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
+        this.glow.setTint(this.selected ? 0xffff00 : PlayerColors[this.unit.player]);
     }
     syncBackgroundPosition(): void {
-        this.background.x = this.x;
-        this.background.y = this.y;
+        this.glow.x = this.x;
+        this.glow.y = this.y;
     }
     update(dt: number, fog: boolean): void {
         const body = <Body>this.body;
@@ -150,7 +152,7 @@ export class Ship extends Phaser.GameObjects.Sprite {
         // Visibility
         this.updateVisible();
         this.visible = !fog || this.visibleToPlayer;
-        this.background.visible = this.visible;
+        this.glow.visible = this.visible;
 
         // Animation
         this.setFrame(0.5 <= this.commander.thrust ? 1 : 0);
@@ -300,14 +302,15 @@ export interface Orbit {
     clockwise: boolean
 }
 
-export class Celestial extends Phaser.GameObjects.Container {
+export class Celestial extends Phaser.GameObjects.Sprite {
     unit: unitai.Celestial;
     orbit: Orbit;
     spawnCount: number;
     ships: Phaser.GameObjects.Group;
     conquered: number;
-    conquerArc: Phaser.GameObjects.Arc | undefined;
+    conquerIndicator: Phaser.GameObjects.Graphics;
     vision: Phaser.GameObjects.Arc;
+    glow: Phaser.GameObjects.Sprite;
 
     constructor(scene: Phaser.Scene,
                 radius: number,
@@ -315,21 +318,31 @@ export class Celestial extends Phaser.GameObjects.Container {
                 player: unitai.PlayerId,
                 spawnCount: number,
                 ships: Phaser.GameObjects.Group) {
-        super(scene);
+        super(scene, 0, 0, undefined);
         this.ships = ships;
         this.spawnCount = spawnCount;
         this.setDepth(Depth.Celestial);
+        this.setTint(Phaser.Display.Color.ValueToColor(PlayerColors[player]).darken(10).color32);
+        this.setScale(2 * radius / this.width);
+        this.setPipeline("radial");
 
-        if (player !== unitai.PlayerId.None) {
-            const color = PlayerColors[player];
-            this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius + 10, 0, 360, false, color, 0.6));
+        // Background glow
+        const color = Phaser.Display.Color.ValueToColor(PlayerColors[player]);
+        if (color.s !== 0) {  // Phaser bug - desaturating grey gives a color!
+            color.desaturate(80);
         }
-        this.add(new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, 0x888888));
+        this.glow = this.scene.add.sprite(0, 0, "glow")
+            .setDepth(Depth.Glow)
+            .setAlpha(0.5)
+            .setTint(color.color32);
+        this.glow.setScale(2 * 2 * radius / this.glow.width);
+
+        // Conquering indicator
         if (player === unitai.PlayerId.Player || player === unitai.PlayerId.Enemy) {
             const enemyColor = PlayerColors[1-player];
-            this.conquerArc = new Phaser.GameObjects.Arc(scene, 0, 0, radius, 0, 360, false, enemyColor);
-            this.conquerArc.visible = false;
-            this.add(this.conquerArc);
+            this.conquerIndicator = this.scene.add.graphics({
+                fillStyle: {color: enemyColor, alpha: 0.75},
+            }).setDepth(Depth.ConquerIndicator).setVisible(false);
         }
 
         this.unit = {
@@ -344,6 +357,7 @@ export class Celestial extends Phaser.GameObjects.Container {
         if (location instanceof Phaser.Math.Vector2) {
             this.orbit = undefined;
             this.setPosition(location.x, location.y);
+            this.glow.setPosition(location.x, location.y);
             // Constant {position, velocity}
             this.unit.position.copy(location);
             this.unit.velocity.reset();
@@ -376,6 +390,8 @@ export class Celestial extends Phaser.GameObjects.Container {
         this.y = this.orbit.center.y + rsin;
         this.unit.position.set(this.x, this.y);
         this.unit.velocity.set(-angularSpeed * rsin, angularSpeed * rcos);
+        this.glow.x = this.x;
+        this.glow.y = this.y;
     }
     update(dt: number): void {
         // Orbiting
@@ -393,8 +409,16 @@ export class Celestial extends Phaser.GameObjects.Container {
     }
     updateConquered(delta: number): void {
         this.conquered = Phaser.Math.Clamp(this.conquered + delta, 0, ConquerTime);
-        this.conquerArc.visible = this.conquered > 0;
-        this.conquerArc.radius = this.unit.radius * Math.sqrt(this.conquered / ConquerTime);
+        this.conquerIndicator.visible = this.conquered > 0;
+        if (this.conquerIndicator.visible) {
+            const radius = this.unit.radius * 0.5;
+            const angle = Phaser.Math.PI2 * this.conquered / ConquerTime;
+            this.conquerIndicator.clear().beginPath()
+                .arc(this.x, this.y, radius, 0, angle)
+                .lineTo(this.x, this.y)
+                .lineTo(this.x + radius, this.y)
+                .fillPath();
+        }
         if (this.conquered === ConquerTime) {
             this.scene.scene.transition({
                 "target": "end",

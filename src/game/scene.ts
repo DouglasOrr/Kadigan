@@ -59,13 +59,24 @@ export default class GameScene extends Phaser.Scene {
     }
     preload(): void {
         this.load.spritesheet("ship", "/assets/ship0.png", {frameWidth: 64});
-        this.load.image("ship_blur", "/assets/blur0.png");
+        this.load.image("glow", "/assets/glow0.png");
+        this.load.glsl("radial", "/assets/radial.frag");
         sound.preload(this.load);
     }
     create(data: Settings): void {
         this.settings = data;
         this.paused = false;
         this.gameTime = 0;
+
+        // Custom pipeline
+        const shader = <Phaser.Display.BaseShader>this.cache.shader.get("radial");
+        const pipeline = new Phaser.Renderer.WebGL.Pipelines.TextureTintPipeline({
+            game: this.game,
+            renderer: this.game.renderer,
+            fragShader: shader.fragmentSrc,
+        });
+        const renderer = <Phaser.Renderer.WebGL.WebGLRenderer>this.game.renderer;
+        renderer.addPipeline("radial", pipeline);
 
         // Control
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);

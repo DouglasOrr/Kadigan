@@ -8,7 +8,7 @@ import EndScene from "./endscene"
 import ShaderTestScreen from "./shadertestscreen";
 
 const config = {
-    type: Phaser.AUTO,
+    type: Phaser.WEBGL,
     width: 800,
     height: 600,
     scale: {
