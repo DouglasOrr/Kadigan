@@ -7,7 +7,7 @@ type Body = Phaser.Physics.Arcade.Body;
 const ShipScale = 0.5;
 const PlayerColors = [0x008888, 0xff8888, 0x888888, 0xcccccc];
 const GravityPerRadius = 0.05;  // (au/s)/au
-const ConquerTime = 30; // s
+const ConquerTime = 60; // s
 const ConquerDefenders = 5; // i.e. conquering happens when this many friendlies are around
 
 // Weapons
