@@ -6,6 +6,7 @@ import * as playerai from "./playerai";
 import * as maps from "./maps";
 import * as sound from "./sound";
 import * as keys from "./keys";
+import HudScene from "./hudscene";
 
 const DragThreshold = 10;
 const PanThreshold = 30;
@@ -53,6 +54,8 @@ export default class GameScene extends Phaser.Scene {
     selectionBox: Phaser.GameObjects.Rectangle;
     panStartPosition: Phaser.Math.Vector2;
     panStartScroll: Phaser.Math.Vector2;
+    hudDeadZoneWidth: number;
+    hudDeadZoneHeight: number;
     keys: keys.Keys;
 
     constructor() {
@@ -139,6 +142,14 @@ export default class GameScene extends Phaser.Scene {
         // Start child scenes
         this.scene.manager.start("starfield", this).sendToBack("starfield");
         this.scene.manager.start("hud", {player: this.players[unitai.PlayerId.Player]});
+
+        this.hudDeadZoneWidth = 0;
+        this.hudDeadZoneHeight = 0;
+        this.scene.manager.getScene("hud").events.on("create", (scene: HudScene) => {
+            // HUD is fixed size (at time of writing)
+            this.hudDeadZoneWidth = scene.hud.width;
+            this.hudDeadZoneHeight = scene.hud.height;
+        }, this);
 
         // Wire up events
         this.game.events.on("prerender", this.preRender, this);
@@ -281,10 +292,14 @@ export default class GameScene extends Phaser.Scene {
         const delta = PanSpeed * dt / camera.zoom;
 
         const px = this.input.activePointer.x;
-        const left = this.keys.panLeft.isDown || (
-            this.settings.pointerPan && px < camera.x + PanThreshold);
-        const right = this.keys.panRight.isDown || (
-            this.settings.pointerPan && px > camera.x + camera.width - PanThreshold);
+        const py = this.input.activePointer.y;
+
+        const pointerPan = this.settings.pointerPan &&
+            !((px > camera.x + camera.width - this.hudDeadZoneWidth)
+              && (py > camera.y + camera.height - this.hudDeadZoneHeight));
+
+        const left = this.keys.panLeft.isDown || (pointerPan && px < camera.x + PanThreshold);
+        const right = this.keys.panRight.isDown || (pointerPan && px > camera.x + camera.width - PanThreshold);
         const panX = (+right - +left)
         camera.scrollX = Phaser.Math.Clamp(
             camera.scrollX + delta * panX,
@@ -292,11 +307,8 @@ export default class GameScene extends Phaser.Scene {
             this.map.bounds.right - camera.width*0.5,
         );
 
-        const py = this.input.activePointer.y;
-        const up = this.keys.panUp.isDown || (
-            this.settings.pointerPan && py < camera.y + PanThreshold);
-        const down = this.keys.panDown.isDown || (
-            this.settings.pointerPan && py > camera.y + camera.height - PanThreshold);
+        const up = this.keys.panUp.isDown || (pointerPan && py < camera.y + PanThreshold);
+        const down = this.keys.panDown.isDown || (pointerPan && py > camera.y + camera.height - PanThreshold);
         const panY = (+down - +up);
         camera.scrollY = Phaser.Math.Clamp(
             camera.scrollY + delta * panY,
