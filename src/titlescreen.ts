@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import * as game from "./game/scene";
+import * as playerai from "./game/playerai";
 
 function getScript() {
     const hour = new Date().getHours();
@@ -31,6 +32,13 @@ function switchToScene(scene: Phaser.Scene, params: URLSearchParams) {
         }
         if (params.has("debugai")) {
             settings.debugAi = {true: true, false: false}[params.get("debugai")];
+        }
+        if (params.has("aidifficulty")) {
+            settings.aidifficulty = {
+                easy: playerai.Difficulty.Easy,
+                medium: playerai.Difficulty.Medium,
+                hard: playerai.Difficulty.Hard
+            }[params.get("aidifficulty")];
         }
         config.data = settings;
 

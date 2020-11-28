@@ -123,7 +123,8 @@ export default class GameScene extends Phaser.Scene {
             ...neutralMoons.map(c => new player.NeutralPlayer(this, c)),
         ];
         this.enemyAi = new playerai.PlayerAI(
-            this, <player.ActivePlayer>this.players[1], this.map.celestials, this.settings.debugAi);
+            this, <player.ActivePlayer>this.players[1], this.map.celestials,
+            this.settings.aidifficulty, this.settings.debugAi);
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
         this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 

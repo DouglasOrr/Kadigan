@@ -4,12 +4,6 @@ import * as objects from "./objects";
 import * as unitai from "./unitai";
 import * as economy from "./economy";
 
-export enum Difficulty {
-    Easy,
-    Medium,
-    Hard,
-}
-
 // Fast forward into the future & try to discover the time of closest approach
 function getClosestApproachTime(src: objects.Celestial, dest: objects.Celestial,
     interval: number, limit: number) {
@@ -57,23 +51,6 @@ function countInRadius(center: Phaser.Math.Vector2, radius: number, ships: objec
     return count;
 }
 
-function meanInRadius(center: Phaser.Math.Vector2, radius: number, ships: objects.Ship[],
-    out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
-    let x = 0;
-    let y = 0;
-    let count = 0;
-    for (let i = 0; i < ships.length; ++i) {
-        const distanceSq = Phaser.Math.Distance.BetweenPointsSquared(
-            center, ships[i].unit.position);
-        if (distanceSq < radius * radius) {
-            count += 1;
-            x += ships[i].unit.position.x;
-            y += ships[i].unit.position.y;
-        }
-    }
-    return out.set(x / count, y / count);
-}
-
 function getPointAtDistance(position: Phaser.Math.Vector2, target: Phaser.Math.Vector2,
     targetDistance: number, out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
     const currentDistance = Phaser.Math.Distance.BetweenPoints(position, target);
@@ -81,6 +58,12 @@ function getPointAtDistance(position: Phaser.Math.Vector2, target: Phaser.Math.V
         .subtract(position)
         .scale((currentDistance - targetDistance) / currentDistance)
         .add(position);
+}
+
+export enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
 }
 
 enum PlanType {
@@ -114,10 +97,11 @@ export class PlayerAI {
     opponentHome: objects.Celestial;
     plan: Plan;
     action: Action;
+    difficulty: Difficulty;
     debug: boolean;
 
     constructor(scene: Phaser.Scene, player: player.ActivePlayer, celestials: objects.Celestial[],
-        debug: boolean) {
+        difficulty: Difficulty, debug: boolean) {
         this.scene = scene;
         this.player = player;
         this.celestials = celestials;
@@ -128,6 +112,7 @@ export class PlayerAI {
             patrol: new Phaser.Math.Vector2,
             orbit: this.player.home,
         }
+        this.difficulty = difficulty;
         this.debug = debug;
         this.replan(0);
     }
@@ -148,6 +133,7 @@ export class PlayerAI {
         const spending = 100 * this.player.account.spending;
         const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
         this.scene.events.emit("aidebugtext", [
+            Difficulty[this.difficulty],
             planStr,
             `prod: ${spending.toFixed(0)}% (${breakEven.toFixed(0)}s)`,
             actionStr,
@@ -157,13 +143,13 @@ export class PlayerAI {
         this.plan.type = PlanType.Wait;
         // TODO - plan for neutrals too
         const approachTime = getClosestApproachTime(this.player.home, this.opponentHome, 30, 300);
-        this.plan.time = time + Math.max(60, approachTime);
+        this.plan.time = time + Phaser.Math.Clamp(approachTime, 1*60, 5*60);
         this.plan.target = this.opponentHome;
     }
     updatePlan(time: integer): void {
         if (this.plan.type === PlanType.Wait && this.plan.time < time) {
             this.plan.type = PlanType.Invade;
-            this.plan.time = time + 120;
+            this.plan.time = time + 3*60;  // Temporary hack - enter invade mode for fixed time
         }
         // TODO - use "outnumbered" rather than "timeout" to swap out of "Invade"
         if (this.plan.type === PlanType.Invade && this.plan.time < time) {
@@ -171,13 +157,38 @@ export class PlayerAI {
         }
     }
     updateEconomy(time: integer): void {
-        if (this.plan.type === PlanType.Wait) {
-            const timeToInvade = this.plan.time - time;
-            const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
-            this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
-        } else {
-            // Invade => keep producing ships!
-            this.player.account.spending = 1;
+        if (this.difficulty === Difficulty.Easy) {
+            // This is a bad strategy - economy grows early on, but saturates
+            // although we keep wasting money on investment
+            this.player.account.spending = 0.25;
+            return;
+        } else if (this.difficulty === Difficulty.Medium) {
+            // Build 3 ships, then invest for 60s, then keep spending
+            const investmentStartTime = 2 + 3 * economy.ShipCost / economy.capitalToIncome(0);
+            if (time < investmentStartTime) {
+                this.player.account.spending = 1;  // build
+            } else if (time < investmentStartTime + 60) {
+                this.player.account.spending = 0;  // invest
+            } else {
+                this.player.account.spending = 1;  // build
+            }
+            return
+        } else { // Difficulty.Hard
+            if (this.plan.type === PlanType.Wait) {
+                // Start by building 3 ships, otherwise calculate the break-even time
+                // for the invasion
+                const investmentStartTime = 2 + 3 * economy.ShipCost / economy.capitalToIncome(0);
+                if (time < investmentStartTime) {
+                    this.player.account.spending = 1;
+                } else {
+                    const timeToInvade = this.plan.time - time;
+                    const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
+                    this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
+                }
+            } else {
+                // Invade => keep producing ships!
+                this.player.account.spending = 1;
+            }
         }
     }
     objective(): objects.Celestial {
@@ -212,15 +223,15 @@ export class PlayerAI {
         // RETREAT
         if (nearbyFriendlies * 1.5 < nearbyEnemies) {
             this.action.type = ActionType.Retreat;
-            const enemyCenter = meanInRadius(
-                leader.unit.position, NearbyThreshold, enemies, this.action.patrol);
+            const closestEnemy = closest(leader.unit.position, enemies, this.action.patrol);
             this.action.patrol = getPointAtDistance(
-                leader.unit.position, enemyCenter, objects.LazerRange * 1.2, enemyCenter);
+                leader.unit.position, closestEnemy, objects.LazerRange * 1.2, closestEnemy);
             return;
         }
 
         // ATTACK
-        if (3 <= nearbyEnemies) {
+        if (3 <= nearbyEnemies ||
+            (1 <= nearbyEnemies && this.plan.type === PlanType.Wait)) {
             this.action.type = ActionType.Attack;
             const closestEnemy = closest(leader.unit.position, enemies, this.action.patrol);
             this.action.patrol = getPointAtDistance(
