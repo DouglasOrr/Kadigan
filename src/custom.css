@@ -1,4 +1,47 @@
+@font-face {
+    font-family: "dimbo";
+    src: url("../assets/Dimbo%20Regular.ttf");
+}
 body {
     background-color: #000000;
     color: #ffffff;
+    font-family: Consolas, Courier, monospace;
+}
+h1 {
+    font-family: dimbo, Consolas, Courier, monospace;
+    font-size: 3em;
+}
+.container {
+    margin: 4em;
+}
+
+/* Help */
+#help-keys {
+    border-spacing: 0.5em;
+}
+#help-keys td {
+    padding: 0.4em;
+}
+.help-keycap {
+    background-color: #ffffff;
+    color: #000000;
+    text-align: center;
+    border-radius: 10px;
+    margin-left: 2em !important;
+}
+.help-description {
+    padding-left: 2em !important;
+}
+
+.help-howto-list > li {
+    padding-bottom: 0.5em;
+}
+.help-thumbnail {
+    vertical-align: middle;
+    width: 32px;
+}
+.help-spacer {
+    height: 32px;
+    vertical-align: middle;
+    display: inline-block;
 }

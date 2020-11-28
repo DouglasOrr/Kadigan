@@ -136,7 +136,7 @@ export default class GameScene extends Phaser.Scene {
         ).setOrigin(0.5, 0.5).setDepth(objects.Depth.Fog).setAlpha(0.6);
 
         // Start child scenes
-        this.scene.manager.start("starfield").sendToBack("starfield");
+        this.scene.manager.start("starfield", this).sendToBack("starfield");
         this.scene.manager.start("hud", {player: this.players[unitai.PlayerId.Player]});
 
         // Wire up events

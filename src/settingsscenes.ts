@@ -4,9 +4,11 @@ import * as playerai from "./game/playerai";
 
 // UI Components
 
+const FONT_SETTINGS = {fontFamily: "dimbo, sans-serif"};
+
 class LinkText extends Phaser.GameObjects.Text {
     constructor(scene: Phaser.Scene, y: number, text: string) {
-        super(scene, scene.cameras.main.centerX, y, text, {});
+        super(scene, scene.cameras.main.centerX, y, text, FONT_SETTINGS);
         this.setOrigin(0.5, 0);
         this.setFontSize(20);
         scene.scale.on("resize", () => this.x = scene.cameras.main.centerX, this);
@@ -81,7 +83,7 @@ export class InGameOptionsScene extends Phaser.Scene {
     }
     create(): void {
         this.background = this.add.rectangle(0, 0, 1, 1, 0x000000, 0.75).setOrigin(0, 0);
-        this.text = this.add.text(0, 0, "Options").setOrigin(0.5, 0).setFontSize(40);
+        this.text = this.add.text(0, 0, "Options", FONT_SETTINGS).setOrigin(0.5, 0).setFontSize(40);
         this.scale.on("resize", this.onResize, this);
         this.onResize();
 
@@ -135,8 +137,11 @@ export class LaunchScreen extends Phaser.Scene {
         super("launch");
     }
     create(): void {
+        this.scene.manager.start("starfield", this).sendToBack("starfield");
+
         this.settings = {...game.DEFAULT_SETTINGS}; // defensive copy
-        this.text = this.add.text(0, 0, "Unnamed Game").setOrigin(0.5, 0).setFontSize(40);
+        this.text = this.add.text(0, 0, "Unnamed Game", FONT_SETTINGS)
+            .setOrigin(0.5, 0).setFontSize(40);
         this.scale.on("resize", this.onResize, this);
         this.onResize();
 

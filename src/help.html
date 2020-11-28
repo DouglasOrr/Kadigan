@@ -4,8 +4,47 @@
     <meta charset="utf-8">
     <title>Help</title>
     <link rel="stylesheet" type="text/css" href="custom.css">
+    <script src="./help.ts"></script>
 </head>
 <body>
-    <h1>Help</h1>
+    <div class="container">
+        <h1>Unnamed Game - Help</h1>
+        <h2>How to play</h2>
+        <ul class="help-howto-list">
+            <li>You control a fleet of tiny ships
+                <img class="help-thumbnail" src="../assets/help/ship.png"/>
+                <ul>
+                    <li><div class="help-spacer"></div>Left click to select</li>
+                    <li><div class="help-spacer"></div>Right click to send to a position or orbit</li>
+                </ul>
+            </li>
+            <li>Ships are automatically produced at your home moon
+                <img class="help-thumbnail" src="../assets/help/home.png"/></li>
+            <li>Control your economy using the spending slider
+                <img class="help-thumbnail" src="../assets/help/slider.png"/>
+                <ul>
+                    <li><div class="help-spacer"></div>100% produces ships as fast as possible</li>
+                    <li><div class="help-spacer"></div>0% produces no ships, but invests to increase your income over time</li>
+                </ul>
+            </li>
+            <li>Neutral ships orbit <span style="font-weight: bold; color: #aaaaaa">grey</span> moons
+                <img class="help-thumbnail" src="../assets/help/neutralmoon.png"/>
+                <ul>
+                    <li><div class="help-spacer"></div>They don't attack, but do fire back</li>
+                    <li><div class="help-spacer"></div>You receive a bonus for each neutral ship you destroy</li>
+                </ul>
+            </li>
+            <li>The enemy's base is a <span style="font-weight: bold; color: #ff8888">red</span> moon
+                <img class="help-thumbnail" src="../assets/help/enemymoon.png"/>
+                <ul>
+                    <li><div class="help-spacer"></div>Enemy ships attack both neutrals &amp; you</li>
+                    <li><div class="help-spacer"></div>Orbit an enemy base that has no defenders and you will gradually conquer it</li>
+                </ul>
+            </li>
+            <li><div class="help-spacer"></div>Your objective is to conquer the enemy moon before they conquer yours</li>
+        </ul>
+        <h2>Keyboard controls</h2>
+        <table id="help-keys"></table>
+    </div>
 </body>
 </html>

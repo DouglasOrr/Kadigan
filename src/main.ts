@@ -56,3 +56,10 @@ window.addEventListener("keydown", event => {
         }
     }
 });
+window.addEventListener("load", () => {
+    // Remove "loading" placeholders
+    const elements = document.getElementsByClassName("custom-loading");
+    for (let i = 0; i < elements.length; ++i) {
+        elements[i].remove();
+    }
+});
