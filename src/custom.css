@@ -7,6 +7,18 @@ body {
 .container {
     margin: 4em;
 }
+a:link {
+    color: #ffffff;
+}
+a:visited {
+    color: #aaaaaa;
+}
+
+/* Credits */
+.credits-list > li {
+    padding-top: 1.5em;
+    list-style-type: none;
+}
 
 /* Help */
 #help-keys {
