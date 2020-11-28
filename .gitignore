@@ -1,4 +1,5 @@
 .cache
 dist
+dist_debug
 /local
 node_modules

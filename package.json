@@ -5,7 +5,8 @@
   "author": "",
   "license": "MIT",
   "scripts": {
-    "start": "parcel src/*.html --port 1234 --hmr-port 12345",
+    "start": "parcel src/*.html --port 1234 --hmr-port 12345 --out-dir dist_debug",
+    "build": "parcel build src/*.html",
     "tsc": "tsc --noEmit",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
@@ -22,7 +23,8 @@
         "staticOutDir": "assets"
       }
     ],
-    "watcherGlob": "**"
+    "watcherGlob": "**",
+    "excludeGlob": "**/*.md"
   },
   "dependencies": {
     "phaser": "^3.24.1"
