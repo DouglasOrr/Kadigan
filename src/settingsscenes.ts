@@ -140,7 +140,7 @@ export class LaunchScreen extends Phaser.Scene {
         this.scene.manager.start("starfield", this).sendToBack("starfield");
 
         this.settings = {...game.DEFAULT_SETTINGS}; // defensive copy
-        this.text = this.add.text(0, 0, "Unnamed Game", FONT_SETTINGS)
+        this.text = this.add.text(0, 0, "Kadigan", FONT_SETTINGS)
             .setOrigin(0.5, 0).setFontSize(40);
         this.scale.on("resize", this.onResize, this);
         this.onResize();

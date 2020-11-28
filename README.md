@@ -1,6 +1,8 @@
-# Unnamed game
+# Kadigan
 
 [![Build Status](https://travis-ci.org/DouglasOrr/UnnamedGame.svg?branch=master)](https://travis-ci.org/DouglasOrr/UnnamedGame)
+
+Kadigan is a single-player RTS set in a dynamic world.
 
 ## Getting started
 

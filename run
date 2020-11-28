@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 
-IMAGE = "unnamedgame"
+IMAGE = "kadigan"
 
 
 def sh(*cmd):

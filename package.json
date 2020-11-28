@@ -1,5 +1,5 @@
 {
-  "name": "unnamedgame",
+  "name": "kadigan",
   "version": "1.0.0",
   "description": "",
   "author": "",
@@ -14,7 +14,9 @@
   },
   "jest": {
     "preset": "ts-jest",
-    "setupFiles": ["jest-canvas-mock"]
+    "setupFiles": [
+      "jest-canvas-mock"
+    ]
   },
   "staticFiles": {
     "staticPath": [
