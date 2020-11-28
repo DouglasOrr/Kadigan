@@ -1,6 +1,6 @@
 # Design
 
-Unnamed Game is a single player skirmish RTS set in a dynamic world.
+Kadigan is a single player skirmish RTS set in a dynamic world.
 
 ![diagram of basic gameplay](img/basic_gameplay.svg)
 
