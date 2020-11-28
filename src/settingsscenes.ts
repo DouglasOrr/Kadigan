@@ -168,11 +168,9 @@ export class LaunchScreen extends Phaser.Scene {
     }
     // Handlers
     clickStartGame(): void {
-        this.scene.transition({
-            target: "game",
-            data: this.settings,
-            duration: 0,
-        });
+        // Don't stop() - or we might cause a crash in onResize()
+        this.scene.sleep();
+        this.scene.run("game", this.settings);
     }
     toggleDifficulty(value: playerai.Difficulty): void {
         this.settings.aidifficulty = value;
