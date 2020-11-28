@@ -1,6 +1,6 @@
 # Assets
 
-This is a directory of assets for use in building UnnamedGame only. Please refer to the original source for license and attribution requirements.
+This is a directory of assets for use in building Kadigan only. Please refer to the original source for license and attribution requirements.
 
 | Asset | Title |Source | Attribution Required | Note |
 | --- | --- | --- | --- | --- |
