@@ -1,15 +1,8 @@
-@font-face {
-    font-family: "dimbo";
-    src: url("../assets/Dimbo%20Regular.ttf");
-}
+/* General */
 body {
     background-color: #000000;
     color: #ffffff;
     font-family: Consolas, Courier, monospace;
-}
-h1 {
-    font-family: dimbo, Consolas, Courier, monospace;
-    font-size: 3em;
 }
 .container {
     margin: 4em;

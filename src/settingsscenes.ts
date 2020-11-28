@@ -4,7 +4,7 @@ import * as playerai from "./game/playerai";
 
 // UI Components
 
-const FONT_SETTINGS = {fontFamily: "dimbo, sans-serif"};
+const FONT_SETTINGS = {}; // default fonts
 
 class LinkText extends Phaser.GameObjects.Text {
     constructor(scene: Phaser.Scene, y: number, text: string) {
