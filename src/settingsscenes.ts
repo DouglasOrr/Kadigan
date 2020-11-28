@@ -109,6 +109,19 @@ class CenterText extends Phaser.GameObjects.Text {
     }
 }
 
+class FootnoteText extends Phaser.GameObjects.Text {
+    constructor(scene: Phaser.Scene, text: string) {
+        const camera = scene.cameras.main;
+        super(scene, camera.width / 2, camera.height - 30, text, FONT_SETTINGS);
+        this.setOrigin(0.5, 1);
+        this.setFontSize(16);
+        scene.scale.on("resize", () => {
+            const camera = scene.cameras.main;
+            this.setPosition(camera.width / 2, camera.height - 30);
+        });
+    }
+}
+
 // Scenes & screens
 
 export class LaunchScreen extends Phaser.Scene {
@@ -139,6 +152,9 @@ export class LaunchScreen extends Phaser.Scene {
         });
         this.add.existing(new ToggleText(this, 350, alts)
             .setValue(this.settings.aibonus).on("valuechange", this.toggleBonus, this));
+
+        this.add.existing(new FootnoteText(this,
+            "Hint: Press ESC in-game to access the menu"));
     }
     // Handlers
     clickStartGame(): void {
@@ -174,6 +190,10 @@ export class InGameOptionsScene extends Phaser.Scene {
             {value: true, description: "Sounds: On"},
             {value: false, description: "Sounds: Off"},
         ]).on("valuechange", this.toggleSounds, this));
+        this.add.existing(new ToggleText(this, 390, [
+            {value: false, description: "Pan camera at edge of screen: No"},
+            {value: true, description: "Pan camera at edge of screen: Yes"},
+        ]).on("valuechange", this.togglePointerPan, this));
     }
     // Handlers
     clickResumeGame(): void {
@@ -187,6 +207,9 @@ export class InGameOptionsScene extends Phaser.Scene {
     }
     toggleSounds(value: boolean): void {
         this.scene.manager.getScene("game").events.emit("togglesounds", value);
+    }
+    togglePointerPan(value: boolean): void {
+        this.scene.manager.getScene("game").events.emit("togglepointerpan", value);
     }
 }
 

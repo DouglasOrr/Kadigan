@@ -21,8 +21,8 @@ export interface Settings {
     // General settings
     aidifficulty: playerai.Difficulty;
     aibonus: number;
-    // Dev settings
     pointerPan: boolean;
+    // Dev settings
     fog: boolean;
     debugAi: boolean;
 }
@@ -30,7 +30,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
     aidifficulty: playerai.Difficulty.Medium,
     aibonus: 1,
-    pointerPan: true,
+    pointerPan: false,
     fog: true,
     debugAi: false,
 };
@@ -174,6 +174,7 @@ export default class GameScene extends Phaser.Scene {
         this.events.on("conquercelestial", this.onConquerCelestial, this);
         this.events.on("togglemusic", this.playlist.setPlaying, this.playlist);
         this.events.on("togglesounds", this.sounds.setEnabled, this.sounds);
+        this.events.on("togglepointerpan", (value: boolean) => this.settings.pointerPan = value, this);
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
