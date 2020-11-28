@@ -4,7 +4,7 @@ This is a directory of assets for use in building Kadigan only. Please refer to 
 
 | Asset | Title |Source | Attribution Required | Note |
 | --- | --- | --- | --- | --- |
-| [`ship0.png`](ship0.png) | - | Custom | No | Created using [GIMP](https://www.gimp.org/) |
+| [`ship0.png`](ship0.png), ['favicon.ico'](favicon.ico) | - | Custom | No | Created using [GIMP](https://www.gimp.org/) |
 | [`glow0.png`](glow0.png) | - | Custom | No | Created using [GIMP](https://www.gimp.org/) |
 | [`slider0.png`](slider0.png) | - | Custom | No | Created using [GIMP](https://www.gimp.org/) |
 | [`hud0.png`](hud0.png) | - | Custom | No | Created using [GIMP](https://www.gimp.org/) |
