@@ -111,6 +111,13 @@ class Toggle extends Phaser.GameObjects.Rectangle {
 const ProductionBalanceFillColor = 0xff0000;
 const IncomeFillColor = 0x00ff00;
 
+function getSliderColor(v: number): integer {
+    return (
+        (Math.round(255 * v) << 16) +
+        (Math.round(255 * (1-v)) << 8)
+    );
+}
+
 class Hud extends Phaser.GameObjects.Container {
     time: Phaser.GameObjects.BitmapText;
     slider: Slider;
@@ -214,8 +221,9 @@ class Hud extends Phaser.GameObjects.Container {
         this.income.update(income / economy.MaxIncome);
 
         this.slider.setValue(account.spending);
+        this.slider.slider.setTint(getSliderColor(account.spending));
         this.sliderText.setText((100 * account.spending).toFixed(0) + " %");
-        this.incomeText.setText(income.toFixed(1));
+        this.incomeText.setText(income.toFixed(1) + " /s");
         this.productionBalanceText.setText(
             shipRate >= 100 ? "? s" : shipRate.toFixed(0) + " s");
 
