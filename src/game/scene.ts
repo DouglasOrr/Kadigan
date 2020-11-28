@@ -16,13 +16,19 @@ const MinDisplayWidth = 500;  // au
 const MaxDisplayWidth = 10000;  // au
 const FogTextureDownscale = 2;
 
-interface Settings {
+export interface Settings {
+    // General settings
+    aidifficulty: playerai.Difficulty;
+    aibonus: number;
+    // Dev settings
     pointerPan: boolean;
     fog: boolean;
     debugAi: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+    aidifficulty: playerai.Difficulty.Medium,
+    aibonus: 1,
     pointerPan: true,
     fog: true,
     debugAi: false,

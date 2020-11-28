@@ -4,6 +4,12 @@ import * as objects from "./objects";
 import * as unitai from "./unitai";
 import * as economy from "./economy";
 
+export enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
+}
+
 // Fast forward into the future & try to discover the time of closest approach
 function getClosestApproachTime(src: objects.Celestial, dest: objects.Celestial,
     interval: number, limit: number) {

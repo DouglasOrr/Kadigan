@@ -38,7 +38,7 @@ function switchToScene(scene: Phaser.Scene, params: URLSearchParams) {
         const winner = params.has("winner") ? parseInt(params.get("winner")) : 0;
         config.data = {winner: winner};
 
-    } else if (config.target in {starfield: 0, shadertest: 0}) {
+    } else if (config.target in {starfield: 0, shadertest: 0, launch: 0, ingameoptions: 0}) {
         // No options
 
     } else {

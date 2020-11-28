@@ -1,12 +1,11 @@
 import Phaser from "phaser"
 import TitleScreen from "./titlescreen"
-import LaunchScreen from "./launchscreen"
 import GameScene from "./game/scene"
 import HudScene from "./game/hudscene"
 import StarfieldScene from "./starfieldscene"
 import EndScene from "./endscene"
 import ShaderTestScreen from "./shadertestscreen";
-import InGameOptionsScene from "./ingameoptionsscene"
+import * as settingsscenes from "./settingsscenes"
 
 const config = {
     type: Phaser.WEBGL,
@@ -18,12 +17,12 @@ const config = {
     scene: [
         // Main
         TitleScreen,
-        LaunchScreen,
+        settingsscenes.LaunchScreen,
         GameScene,
         // Overlays
         StarfieldScene,
         HudScene,
-        InGameOptionsScene,
+        settingsscenes.InGameOptionsScene,
         EndScene,
         // Other
         ShaderTestScreen,

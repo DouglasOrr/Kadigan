@@ -23,7 +23,7 @@ export const Specs: KeySpec[] = [
     {command: "panDown", description: "Pan DOWN", label: "S"},
     {command: "panLeft", description: "Pan LEFT", label: "A"},
     {command: "panRight", description: "Pan RIGHT", label: "D"},
-    {command: "toggleFullScreen", description: "Toggle full screen", label: "L"},
+    {command: "toggleFullScreen", description: "Toggle full screen", label: "I"},
 
     // Game state
     {command: "togglePause", description: "Pause/unpause", label: "SPACE"},
