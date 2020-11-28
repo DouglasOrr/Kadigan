@@ -3,11 +3,11 @@ import TitleScreen from "./titlescreen"
 import GameScene from "./game/scene"
 import HudScene from "./game/hudscene"
 import StarfieldScene from "./starfieldscene"
-import EndScene from "./endscene"
-import ShaderTestScreen from "./shadertestscreen";
+import ShaderTestScreen from "./shadertestscreen"
 import * as settingsscenes from "./settingsscenes"
+import * as unitai from "./game/unitai"
 
-const config = {
+const Config = {
     type: Phaser.WEBGL,
     width: 800,
     height: 600,
@@ -23,7 +23,7 @@ const config = {
         StarfieldScene,
         HudScene,
         settingsscenes.InGameOptionsScene,
-        EndScene,
+        settingsscenes.EndScene,
         // Other
         ShaderTestScreen,
     ],
@@ -36,16 +36,33 @@ const config = {
     disableContextMenu: true,
 };
 
-declare global {
-    interface Window { game: Phaser.Game; }
+class Game extends Phaser.Game {
+    constructor() {
+        super(Config);
+    }
+    win(): void {
+        const gameScene = window.game.scene.getScene("game");
+        gameScene.events.emit("conquercelestial", unitai.PlayerId.Player);
+    }
+    lose(): void {
+        const gameScene = window.game.scene.getScene("game");
+        gameScene.events.emit("conquercelestial", unitai.PlayerId.Enemy);
+    }
 }
-window.game = new Phaser.Game(config);
+
+declare global {
+    interface Window { game: Game; }
+}
+window.game = new Game();
 window.addEventListener("keydown", event => {
     // This is a bit hacky - it's easy to run into race conditions
     // doing this in the individual scenes (due to lifecycle issues)
     if (event.code === "Escape") {
         const gameScene = window.game.scene.getScene("game");
-        if (gameScene.scene.isActive()) {
+        const endScene = window.game.scene.getScene("end");
+        if (endScene.scene.isActive()) {
+            // Do nothing
+        } else if (gameScene.scene.isActive()) {
             window.game.scene.pause("hud");
             window.game.scene.pause("game");
             window.game.scene.run("ingameoptions");
@@ -54,12 +71,5 @@ window.addEventListener("keydown", event => {
             window.game.scene.resume("game");
             window.game.scene.sleep("ingameoptions");
         }
-    }
-});
-window.addEventListener("load", () => {
-    // Remove "loading" placeholders
-    const elements = document.getElementsByClassName("custom-loading");
-    for (let i = 0; i < elements.length; ++i) {
-        elements[i].remove();
     }
 });

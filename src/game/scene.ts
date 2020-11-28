@@ -255,16 +255,6 @@ export default class GameScene extends Phaser.Scene {
         player.account.hold = !player.account.hold;
         this.events.emit("playerholdproductionchanged", player.account.hold);
     }
-    showDebug(): void {
-        const camera = this.cameras.main;
-        console.log({
-            fps: this.game.loop.actualFps,
-            camera: {
-                zoom: camera.zoom,
-                center: {x: camera.centerX, y: camera.centerY},
-            },
-        });
-    }
     togglePause(): void {
         // We don't want to use scene.pause() because we still want a bit of interaction,
         // camera movement, etc.
@@ -426,5 +416,16 @@ export default class GameScene extends Phaser.Scene {
         camera.scrollY += dy + scale * (pointer.worldY - camera.worldView.centerY);
 
         this.events.emit("updatecamera", camera);
+    }
+    // Dev
+    showDebug(): void {
+        const camera = this.cameras.main;
+        console.log({
+            fps: this.game.loop.actualFps,
+            camera: {
+                zoom: camera.zoom,
+                center: {x: camera.centerX, y: camera.centerY},
+            },
+        });
     }
 }

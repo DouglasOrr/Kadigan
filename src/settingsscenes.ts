@@ -72,66 +72,47 @@ class ToggleText extends LinkText {
     }
 }
 
-// Scenes & screens
-
-export class InGameOptionsScene extends Phaser.Scene {
-    background: Phaser.GameObjects.Rectangle;
-    text: Phaser.GameObjects.Text;
-
-    constructor() {
-        super("ingameoptions");
-    }
-    create(): void {
-        this.background = this.add.rectangle(0, 0, 1, 1, 0x000000, 0.75).setOrigin(0, 0);
-        this.text = this.add.text(0, 0, "Options", FONT_SETTINGS).setOrigin(0.5, 0).setFontSize(40);
-        this.scale.on("resize", this.onResize, this);
-        this.onResize();
-
-        this.add.existing(new LinkText(this, 150, "Resume")
-            .on("click", this.clickResumeGame, this));
-        this.add.existing(new LinkText(this, 190, "New game")
-            .on("click", this.clickNewGame, this));
-        this.add.existing(new OpenInNewTabLinkText(this, 230, "Help", "/help.html"));
-        this.add.existing(new ToggleText(this, 310, [
-            {value: true, description: "Music: On"},
-            {value: false, description: "Music: Off"},
-        ]).on("valuechange", this.toggleMusic, this));
-        this.add.existing(new ToggleText(this, 350, [
-            {value: true, description: "Sounds: On"},
-            {value: false, description: "Sounds: Off"},
-        ]).on("valuechange", this.toggleSounds, this));
-    }
-    onResize(): void {
-        const camera = this.cameras.main;
-        this.background.setSize(camera.width, camera.height);
-        this.text.setPosition(camera.width/2, 50);
-    }
-    // Handlers
-    clickResumeGame(): void {
-        // Match main.ts
-        this.scene.resume("game");
-        this.scene.resume("hud");
-        this.scene.sleep();
-    }
-    clickNewGame(): void {
-        // Using Scene APIs is quite tricky - there are a few "tendrils" between scenes
-        // that are hard to fix.
-        // So we just refresh the page, skipping the title sequence.
-        const params = new URLSearchParams(window.location.search);
-        params.set("skiptitle", "true");
-        window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?${params.toString()}`;
-    }
-    toggleMusic(value: boolean): void {
-        this.scene.manager.getScene("game").events.emit("togglemusic", value);
-    }
-    toggleSounds(value: boolean): void {
-        this.scene.manager.getScene("game").events.emit("togglesounds", value);
+class NewGameLinkText extends LinkText {
+    constructor(scene: Phaser.Scene, y: number) {
+        super(scene, y, "New game");
+        this.on("click", () => {
+            // Using Scene APIs is quite tricky - there are a few "tendrils" between scenes
+            // that are hard to fix.
+            // So we just refresh the page, skipping the title sequence.
+            const params = new URLSearchParams(window.location.search);
+            params.set("skiptitle", "true");
+            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?${params}`;
+        });
     }
 }
 
+class TranslucentBackground extends Phaser.GameObjects.Rectangle {
+    constructor(scene: Phaser.Scene, alpha: number) {
+        const camera = scene.cameras.main;
+        super(scene, 0, 0, camera.width, camera.height, 0x000000, alpha);
+        this.setOrigin(0, 0);
+        scene.scale.on("resize", () => {
+            const camera = this.scene.cameras.main;
+            this.setSize(camera.width, camera.height);
+        });
+    }
+}
+
+class CenterText extends Phaser.GameObjects.Text {
+    constructor(scene: Phaser.Scene, y: number, text: string) {
+        super(scene, scene.cameras.main.width/2, y, text, FONT_SETTINGS);
+        this.setOrigin(0.5, 0);
+        this.setFontSize(40);
+        scene.scale.on("resize", () => {
+            this.x = this.scene.cameras.main.width/2;
+        });
+    }
+}
+
+// Scenes & screens
+
 export class LaunchScreen extends Phaser.Scene {
     settings: game.Settings;
-    text: Phaser.GameObjects.Text;
 
     constructor() {
         super("launch");
@@ -140,10 +121,7 @@ export class LaunchScreen extends Phaser.Scene {
         this.scene.manager.start("starfield", this).sendToBack("starfield");
 
         this.settings = {...game.DEFAULT_SETTINGS}; // defensive copy
-        this.text = this.add.text(0, 0, "[Kadigan]", FONT_SETTINGS)
-            .setOrigin(0.5, 0).setFontSize(40);
-        this.scale.on("resize", this.onResize, this);
-        this.onResize();
+        this.add.existing(new CenterText(this, 50, "[Kadigan]"))
 
         this.add.existing(new LinkText(this, 150, "Start Game")
             .on("click", this.clickStartGame, this));
@@ -162,10 +140,6 @@ export class LaunchScreen extends Phaser.Scene {
         this.add.existing(new ToggleText(this, 350, alts)
             .setValue(this.settings.aibonus).on("valuechange", this.toggleBonus, this));
     }
-    onResize(): void {
-        const camera = this.cameras.main;
-        this.text.setPosition(camera.width/2, 50);
-    }
     // Handlers
     clickStartGame(): void {
         // Don't stop() - or we might cause a crash in onResize()
@@ -177,5 +151,87 @@ export class LaunchScreen extends Phaser.Scene {
     }
     toggleBonus(value: number): void {
         this.settings.aibonus = value;
+    }
+}
+
+export class InGameOptionsScene extends Phaser.Scene {
+    constructor() {
+        super("ingameoptions");
+    }
+    create(): void {
+        this.add.existing(new TranslucentBackground(this, 0.75));
+        this.add.existing(new CenterText(this, 50, "Options"));
+
+        this.add.existing(new LinkText(this, 150, "Resume")
+            .on("click", this.clickResumeGame, this));
+        this.add.existing(new NewGameLinkText(this, 190));
+        this.add.existing(new OpenInNewTabLinkText(this, 230, "Help", "/help.html"));
+        this.add.existing(new ToggleText(this, 310, [
+            {value: true, description: "Music: On"},
+            {value: false, description: "Music: Off"},
+        ]).on("valuechange", this.toggleMusic, this));
+        this.add.existing(new ToggleText(this, 350, [
+            {value: true, description: "Sounds: On"},
+            {value: false, description: "Sounds: Off"},
+        ]).on("valuechange", this.toggleSounds, this));
+    }
+    // Handlers
+    clickResumeGame(): void {
+        // Match main.ts
+        this.scene.resume("game");
+        this.scene.resume("hud");
+        this.scene.sleep();
+    }
+    toggleMusic(value: boolean): void {
+        this.scene.manager.getScene("game").events.emit("togglemusic", value);
+    }
+    toggleSounds(value: boolean): void {
+        this.scene.manager.getScene("game").events.emit("togglesounds", value);
+    }
+}
+
+export class EndScene extends Phaser.Scene {
+    constructor() {
+        super("end");
+    }
+    create(data: {winner: number}): void {
+        let outcome = "Draw.";
+        let outcomeFadeDuration = 1000;
+        if (data.winner === 1) {
+            outcome = "Victory.";
+            outcomeFadeDuration = 500;
+        }
+        if (data.winner === -1) {
+            outcome = "Defeat.";
+            outcomeFadeDuration = 3000;
+        }
+
+        // Create layout
+        const background = this.add.existing(new TranslucentBackground(this, 0.5).setAlpha(0));
+        const text = this.add.existing(new CenterText(this, 100, outcome).setAlpha(0));
+        const newGame = this.add.existing(new NewGameLinkText(this, 250).setAlpha(0));
+
+        // Animate
+        this.tweens.timeline()
+            .add({
+                targets: background,
+                alpha: {from: 0, to: 1},
+                duration: 2000,
+                ease: "Power1",
+            })
+            .add({
+                targets: text,
+                alpha: {from: 0, to: 1},
+                duration: outcomeFadeDuration,
+                ease: "Power2",
+            })
+            .add({
+                targets: newGame,
+                delay: 1000,
+                alpha: {from: 0, to: 1},
+                duration: 500,
+                ease: "Power2",
+            })
+            .play();
     }
 }
