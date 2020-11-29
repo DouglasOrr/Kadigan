@@ -90,15 +90,24 @@ interface Action {
     orbit: objects.Celestial,
 }
 
+enum Mode {
+    Default,
+    Flee,
+}
+
 export class PlayerAI {
     scene: Phaser.Scene;
     player: player.ActivePlayer;
     celestials: objects.Celestial[];
     opponentHome: objects.Celestial;
-    plan: Plan;
-    action: Action;
     difficulty: Difficulty;
     debug: boolean;
+
+    // State
+    plan: Plan;
+    mode: Mode;
+    impatience: number;
+    action: Action;
 
     constructor(scene: Phaser.Scene, player: player.ActivePlayer, celestials: objects.Celestial[],
         difficulty: Difficulty, debug: boolean) {
@@ -106,20 +115,23 @@ export class PlayerAI {
         this.player = player;
         this.celestials = celestials;
         this.opponentHome = celestials.find(c => c.unit.player === unitai.PlayerId.Player);
+        this.difficulty = difficulty;
+        this.debug = debug;
+
         this.plan = {type: PlanType.Wait, time: 0, target: undefined};
+        this.mode = Mode.Default;
+        this.impatience = 0;
         this.action = {
             type: ActionType.Move,
             patrol: new Phaser.Math.Vector2,
             orbit: this.player.home,
-        }
-        this.difficulty = difficulty;
-        this.debug = debug;
+        };
         this.replan(0);
     }
     updateDebug(time: integer): void {
         let planStr: string;
         if (this.plan.type === PlanType.Wait) {
-            planStr = `Wait(${(this.plan.time - time).toFixed(0)}s)`
+            planStr = `Wait(${(this.plan.time - time).toFixed(0)} s)`
         } else {
             planStr = `Invade(${unitai.PlayerId[this.plan.target.unit.player]})`
         }
@@ -131,12 +143,12 @@ export class PlayerAI {
             actionStr = `${ActionType[this.action.type]}(${v.x.toFixed(0)}, ${v.y.toFixed(0)})`
         }
         const spending = 100 * this.player.account.spending;
-        const breakEven = economy.breakEvenTime(
-            this.player.account.futureCapital(), this.player.account.bonus);
+        const bonus = 100 * this.player.account.bonus;
         this.scene.events.emit("aidebugtext", [
-            Difficulty[this.difficulty],
+            `${Difficulty[this.difficulty]}(${bonus.toFixed(0)} %)`,
             planStr,
-            `prod: ${spending.toFixed(0)}% (${breakEven.toFixed(0)}s)`,
+            `Spending(${spending.toFixed(0)} %)`,
+            `${Mode[this.mode]}(${this.impatience.toFixed(0)} s)`,
             actionStr,
         ]);
     }
@@ -220,11 +232,27 @@ export class PlayerAI {
         // myShips.forEach(ship => ship.select(false));
         // leader.select(true);
 
-        // DEFEND
         const invasionThreshold = objects.conquerRadius(this.player.home.unit);
         const defenseThreshold = invasionThreshold + objects.LazerRange;
         const isDefending = Phaser.Math.Distance.BetweenPointsSquared(
             leader.unit.position, this.player.home.unit.position) < defenseThreshold * defenseThreshold;
+
+        // FLEE
+        const ImpatienceThreshold = 30; // s
+        if (isDefending) {
+            this.mode = Mode.Default;
+            this.impatience = 0;
+        }
+        if (this.impatience > ImpatienceThreshold) {
+            this.mode = Mode.Flee;
+        }
+        if (this.mode === Mode.Flee) {
+            this.action.type = ActionType.Move;
+            this.action.orbit = this.player.home;
+            return;
+        }
+
+        // DEFEND
         const invaders = countInRadius(this.player.home.unit.position, invasionThreshold, enemies);
         if (!isDefending && invaders >= 1) {
             this.action.type = ActionType.Move;
@@ -278,10 +306,18 @@ export class PlayerAI {
         this.action.type = ActionType.Move;
         this.action.orbit = objective;
     }
-    update(time: integer, friendlies: objects.Ship[], enemies: objects.Ship[]): void {
+    updateImpatience(dt: number): void {
+        if (this.action.type === ActionType.Retreat) {
+            this.impatience += dt;
+        } else {
+            this.impatience = Math.max(0, this.impatience - dt);
+        }
+    }
+    update(time: integer, dt: number, friendlies: objects.Ship[], enemies: objects.Ship[]): void {
         this.updatePlan(time);
         this.updateEconomy(time);
         this.updateShipCommand(friendlies, enemies);
+        this.updateImpatience(dt);
         if (this.debug) {
             this.updateDebug(time);
         }

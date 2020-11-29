@@ -16,6 +16,7 @@ const ZoomSpeed = 10;  // /s
 const MinDisplayWidth = 500;  // au
 const MaxDisplayWidth = 10000;  // au
 const FogTextureDownscale = 2;
+const AiUpdateInterval = 0.2; // s
 
 export interface Settings {
     // General settings
@@ -191,7 +192,7 @@ export default class GameScene extends Phaser.Scene {
             loop: true,
         });
         this.time.addEvent({
-            delay: 200,
+            delay: 1000 * AiUpdateInterval,
             callback: this.tickAi,
             callbackScope: this,
             loop: true,
@@ -223,7 +224,7 @@ export default class GameScene extends Phaser.Scene {
                 }
             }
         });
-        this.enemyAi.update(this.gameTime, aiShips, visibleShips);
+        this.enemyAi.update(this.gameTime, AiUpdateInterval, aiShips, visibleShips);
     }
     preRender(): void {
         const camera = this.cameras.main;
