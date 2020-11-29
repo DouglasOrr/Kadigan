@@ -19,6 +19,7 @@ const FogTextureDownscale = 2;
 
 export interface Settings {
     // General settings
+    map: string;
     aidifficulty: playerai.Difficulty;
     aibonus: number;
     pointerPan: boolean;
@@ -28,12 +29,38 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+    map: maps.MapList[0].name,
     aidifficulty: playerai.Difficulty.Medium,
     aibonus: 1,
     pointerPan: false,
     fog: true,
     debugAi: false,
 };
+
+export function parseSettings(settings: Settings, params: URLSearchParams): void {
+    if (params.has("map")) {
+        settings.map = params.get("map");
+    }
+    if (params.has("aidifficulty")) {
+        settings.aidifficulty = {
+            easy: playerai.Difficulty.Easy,
+            medium: playerai.Difficulty.Medium,
+            hard: playerai.Difficulty.Hard
+        }[params.get("aidifficulty")];
+    }
+    if (params.has("aibonus")) {
+        settings.aibonus = parseFloat(params.get("aibonus"));
+    }
+    if (params.has("pointerpan")) {
+        settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+    }
+    if (params.has("fog")) {
+        settings.fog = {true: true, false: false}[params.get("fog")];
+    }
+    if (params.has("debugai")) {
+        settings.debugAi = {true: true, false: false}[params.get("debugai")];
+    }
+}
 
 export default class GameScene extends Phaser.Scene {
     settings: Settings;
@@ -112,7 +139,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Map
         this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
-        this.map = maps.twoPlanetsDemo(this, this.ships);
+        this.map = maps.create(this.settings.map, this, this.ships);
         // this.map = maps.aiTestDemo(this, this.ships);
         this.map.celestials.forEach(c => {this.add.existing(c);});
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);

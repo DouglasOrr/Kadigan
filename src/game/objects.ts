@@ -350,7 +350,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
         if (player === unitai.PlayerId.Player || player === unitai.PlayerId.Enemy) {
             const enemyColor = PlayerColors[getOpponent(player)];
             this.conquerIndicator = this.scene.add.graphics({
-                fillStyle: {color: enemyColor, alpha: 0.75},
+                fillStyle: {color: enemyColor, alpha: 0.35},
             }).setDepth(Depth.ConquerIndicator).setVisible(false);
         }
 
@@ -420,7 +420,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
         this.conquered = Phaser.Math.Clamp(this.conquered + delta, 0, ConquerTime);
         this.conquerIndicator.visible = this.conquered > 0;
         if (this.conquerIndicator.visible) {
-            const radius = this.unit.radius * 0.5;
+            const radius = this.unit.radius * 0.7;
             const angle = Phaser.Math.PI2 * this.conquered / ConquerTime;
             this.conquerIndicator.clear().beginPath()
                 .arc(this.x, this.y, radius, 0, angle)

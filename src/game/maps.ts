@@ -77,3 +77,16 @@ export function aiTestDemo(scene: Phaser.Scene, ships: Phaser.GameObjects.Group)
         celestials: [player, enemy],
     };
 }
+
+// List
+
+export const MapList = [
+    {name: "Standard", generator: twoPlanetsDemo},
+    {name: "Head to Head", generator: aiTestDemo},
+    {name: "One planet", generator: originalDemo},
+];
+
+export function create(name: string, scene: Phaser.Scene, ships: Phaser.GameObjects.Group): Map {
+    const map = MapList.find(item => item.name === name);
+    return map.generator(scene, ships);
+}

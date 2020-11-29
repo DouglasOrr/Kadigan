@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import * as game from "./game/scene";
 import * as playerai from "./game/playerai";
+import * as maps from "./game/maps";
 
 // UI Components
 
@@ -131,9 +132,10 @@ export class LaunchScreen extends Phaser.Scene {
         super("launch");
     }
     create(): void {
-        this.scene.manager.start("starfield", this).sendToBack("starfield");
-
         this.settings = {...game.DEFAULT_SETTINGS}; // defensive copy
+        game.parseSettings(this.settings, new URLSearchParams(window.location.search));
+
+        this.scene.manager.start("starfield", this).sendToBack("starfield");
         this.add.existing(new CenterText(this, 50, "[Kadigan]"))
 
         this.add.existing(new LinkText(this, 150, "Start Game")
@@ -147,11 +149,17 @@ export class LaunchScreen extends Phaser.Scene {
             {value: playerai.Difficulty.Easy, description: "Enemy AI: Easy"},
         ]).setValue(this.settings.aidifficulty).on("valuechange", this.toggleDifficulty, this));
 
-        const alts: ToggleTextOption[] = [100, 125, 150, 175, 200, 50, 75].map(percent => {
+        const bonusAlternatives = [100, 125, 150, 175, 200, 50, 75].map(percent => {
             return {value: percent/100, description: `Enemy bonus: ${percent}%`};
         });
-        this.add.existing(new ToggleText(this, 350, alts)
+        this.add.existing(new ToggleText(this, 350, bonusAlternatives)
             .setValue(this.settings.aibonus).on("valuechange", this.toggleBonus, this));
+
+        const mapAlternatives = maps.MapList.map(item => {
+            return {value: item.name, description: `Map: ${item.name}`};
+        });
+        this.add.existing(new ToggleText(this, 390, mapAlternatives)
+            .setValue(this.settings.map).on("valuechange", this.toggleMap, this));
 
         this.add.existing(new FootnoteText(this,
             "Hint: Press ESC in-game to access the menu"));
@@ -167,6 +175,9 @@ export class LaunchScreen extends Phaser.Scene {
     }
     toggleBonus(value: number): void {
         this.settings.aibonus = value;
+    }
+    toggleMap(value: string): void {
+        this.settings.map = value;
     }
 }
 
