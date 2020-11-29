@@ -39,6 +39,10 @@ function getOpponent(player: unitai.PlayerId): unitai.PlayerId | undefined {
     }
 }
 
+export function conquerRadius(celestial: unitai.Celestial): number {
+    return unitai.orbitalRadius(celestial) + unitai.OrbitThresholdOffset
+}
+
 // Ship
 
 const ShipSpriteRotation = 45;  // degrees - to rotate body to lay out sprite
@@ -433,9 +437,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
         }
     }
     isBeingConquered(): boolean {
-        const bodies = this.scene.physics.overlapCirc(
-            this.x, this.y, unitai.orbitalRadius(this.unit) + unitai.OrbitThresholdOffset
-        );
+        const bodies = this.scene.physics.overlapCirc(this.x, this.y, conquerRadius(this.unit));
         let nFriendly = 0;
         for (let i = 0; i < bodies.length; ++i) {
             const ship = <Ship>bodies[i].gameObject;

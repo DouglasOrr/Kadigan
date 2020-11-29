@@ -6,7 +6,7 @@ Kadigan is a single-player RTS set in a dynamic world.
 
 ## Getting started
 
-To host the dev server at http://localhost:1234/index.html?scene=game&pointerpan=false&fog=false&debugai=true
+To host the dev server at http://localhost:1234/index.html?scene=game&fog=false&debugai=true&aidifficulty=medium&map=std
 
 ```bash
 ./run build

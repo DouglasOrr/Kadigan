@@ -156,7 +156,7 @@ export class LaunchScreen extends Phaser.Scene {
             .setValue(this.settings.aibonus).on("valuechange", this.toggleBonus, this));
 
         const mapAlternatives = maps.MapList.map(item => {
-            return {value: item.name, description: `Map: ${item.name}`};
+            return {value: item.key, description: `Map: ${item.name}`};
         });
         this.add.existing(new ToggleText(this, 390, mapAlternatives)
             .setValue(this.settings.map).on("valuechange", this.toggleMap, this));

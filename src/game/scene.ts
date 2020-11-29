@@ -29,7 +29,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-    map: maps.MapList[0].name,
+    map: maps.MapList[0].key,
     aidifficulty: playerai.Difficulty.Medium,
     aibonus: 1,
     pointerPan: false,

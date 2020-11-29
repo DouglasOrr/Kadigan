@@ -220,6 +220,18 @@ export class PlayerAI {
         // myShips.forEach(ship => ship.select(false));
         // leader.select(true);
 
+        // DEFEND
+        const invasionThreshold = objects.conquerRadius(this.player.home.unit);
+        const defenseThreshold = invasionThreshold + objects.LazerRange;
+        const isDefending = Phaser.Math.Distance.BetweenPointsSquared(
+            leader.unit.position, this.player.home.unit.position) < defenseThreshold * defenseThreshold;
+        const invaders = countInRadius(this.player.home.unit.position, invasionThreshold, enemies);
+        if (!isDefending && invaders >= 1) {
+            this.action.type = ActionType.Move;
+            this.action.orbit = this.player.home;
+            return;
+        }
+
         const NearbyThreshold = objects.ShipVisionRange + 200;
         const nearbyEnemies = countInRadius(leader.unit.position, NearbyThreshold, enemies);
         const nearbyFriendlies = countInRadius(leader.unit.position, NearbyThreshold, friendlies);
