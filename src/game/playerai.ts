@@ -131,7 +131,7 @@ export class PlayerAI {
     updateDebug(time: integer): void {
         let planStr: string;
         if (this.plan.type === PlanType.Wait) {
-            planStr = `Wait(${(this.plan.time - time).toFixed(0)} s)`
+            planStr = `Wait(${(this.plan.time - time).toFixed(0)}s)`
         } else {
             planStr = `Invade(${unitai.PlayerId[this.plan.target.unit.player]})`
         }
@@ -143,13 +143,11 @@ export class PlayerAI {
             actionStr = `${ActionType[this.action.type]}(${v.x.toFixed(0)}, ${v.y.toFixed(0)})`
         }
         const spending = 100 * this.player.account.spending;
-        const bonus = 100 * this.player.account.bonus;
         this.scene.events.emit("aidebugtext", [
-            `${Difficulty[this.difficulty]}(${bonus.toFixed(0)} %)`,
+            `${Difficulty[this.difficulty]}(${this.player.account.bonus.toFixed(2)})`,
             planStr,
-            `Spending(${spending.toFixed(0)} %)`,
-            `${Mode[this.mode]}(${this.impatience.toFixed(0)} s)`,
-            actionStr,
+            `${Mode[this.mode]}(${this.impatience.toFixed(0)}s)`,
+            `${actionStr}/${spending.toFixed(0)}%`,
         ]);
     }
     replan(time: integer): void {
@@ -169,49 +167,33 @@ export class PlayerAI {
             this.replan(time);
         }
     }
-    updateEconomy(time: integer): void {
+    updateEconomy(time: integer, nships: integer): void {
         if (this.difficulty === Difficulty.Easy) {
             // This is a bad strategy - economy grows early on, but saturates
             // although we keep wasting money on investment
-            this.player.account.spending = 0.25;
-            return;
+            this.player.account.spending = 0.5;
         } else if (this.difficulty === Difficulty.Medium) {
-            // Build 3 ships, then invest for 60s, then keep spending
-            const investmentStartTime = 2 + 3 * (
-                economy.ShipCost / economy.capitalToIncome(0, this.player.account.bonus));
-            if (time < investmentStartTime) {
-                this.player.account.spending = 1;  // build
-            } else if (time < investmentStartTime + 60) {
-                this.player.account.spending = 0;  // invest
-            } else {
-                this.player.account.spending = 1;  // build
-            }
-            return
-        } else { // Difficulty.Hard
-            if (this.plan.type === PlanType.Wait) {
-                // Start by building 3 ships, otherwise calculate the break-even time
-                // for the invasion
-                const investmentStartTime = 2 + 3 * (
-                    economy.ShipCost / economy.capitalToIncome(0, this.player.account.bonus));
-                if (time < investmentStartTime) {
-                    this.player.account.spending = 1;
-                } else {
-                    const timeToInvade = this.plan.time - time;
-                    const breakEven = economy.breakEvenTime(
-                        this.player.account.futureCapital(), this.player.account.bonus);
-                    this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
-                }
-            } else {
-                // Invade => keep producing ships!
+            if (nships < 6) {
+                // Fleet too small
                 this.player.account.spending = 1;
+            } else {
+                // Invest with a fixed horizon (needs to pay off in N minutes)
+                const breakEvenTime = economy.breakEvenTime(
+                    this.player.account.futureCapital(), this.player.account.bonus);
+                this.player.account.spending = (breakEvenTime <= 3 * 60) ? 0 : 1;
+            }
+        } else { // Difficulty.Hard
+            if (this.plan.type === PlanType.Invade || nships < 5) {
+                // Invade / fleet too small => keep producing ships
+                this.player.account.spending = 1;
+            } else {
+                // Calculate the break-even time for the invasion
+                const timeToInvade = this.plan.time - time;
+                const breakEven = economy.breakEvenTime(
+                    this.player.account.futureCapital(), this.player.account.bonus);
+                this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
             }
         }
-    }
-    objective(): objects.Celestial {
-        if (this.plan.type === PlanType.Wait) {
-            return this.player.home;
-        }
-        return this.plan.target;
     }
     updateShipCommand(friendlies: objects.Ship[], enemies: objects.Ship[]): void {
         if (friendlies.length === 0) {
@@ -278,14 +260,17 @@ export class PlayerAI {
             (1 <= nearbyEnemies && this.plan.type === PlanType.Wait)) {
             this.action.type = ActionType.Attack;
             const closestEnemy = closest(leader.unit.position, enemies, this.action.patrol);
+            // Hard has better micro - attacking from longer range
+            const targetRange = (this.difficulty === Difficulty.Hard) ? 0.8 :
+                ((this.difficulty === Difficulty.Medium) ? 0.6 : 0.4);
             this.action.patrol = getPointAtDistance(
-                leader.unit.position, closestEnemy, objects.LazerRange * 0.8, closestEnemy);
+                leader.unit.position, closestEnemy, targetRange * objects.LazerRange, closestEnemy);
             return;
         }
 
         // GROUP
         const grouped = 0.75 <= leaderCount / friendlies.length;
-        const objective = this.objective();
+        const objective = (this.plan.type === PlanType.Wait) ? this.player.home : this.plan.target;
         const distanceToObjective = Phaser.Math.Distance.BetweenPoints(
             leader.unit.position, objective);
         if (this.action.type === ActionType.Group && !grouped) {
@@ -315,7 +300,7 @@ export class PlayerAI {
     }
     update(time: integer, dt: number, friendlies: objects.Ship[], enemies: objects.Ship[]): void {
         this.updatePlan(time);
-        this.updateEconomy(time);
+        this.updateEconomy(time, friendlies.length);
         this.updateShipCommand(friendlies, enemies);
         this.updateImpatience(dt);
         if (this.debug) {
