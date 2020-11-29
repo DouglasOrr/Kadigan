@@ -12,7 +12,8 @@ function getClosestApproachTime(src: objects.Celestial, dest: objects.Celestial,
         console.warn("Cannot forecast 'double orbits'");
         return limit;
     }
-    let closestDistanceSq = Phaser.Math.Distance.BetweenPointsSquared(src.unit.position, dest.unit.position);
+    let closestDistanceSq = Phaser.Math.Distance.BetweenPointsSquared(
+        src.unit.position, dest.unit.position);
     let closestTime = 0;
     const srcPos = new Phaser.Math.Vector2();
     const destPos = new Phaser.Math.Vector2();
@@ -152,17 +153,25 @@ export class PlayerAI {
     }
     replan(time: integer): void {
         this.plan.type = PlanType.Wait;
-        // TODO - plan for neutrals too
-        const approachTime = getClosestApproachTime(this.player.home, this.opponentHome, 30, 300);
-        this.plan.time = time + Phaser.Math.Clamp(approachTime, 1*60, 5*60);
+
+        const RandomTimingProbability = 0.5;
+        const MinTime = 30;
+        const MaxTime = 5 * 60;
+        const approachTime = getClosestApproachTime(this.player.home, this.opponentHome, 30, MaxTime);
+        if (Math.random() < RandomTimingProbability || approachTime === 0 || approachTime === MaxTime) {
+            this.plan.time = time + Phaser.Math.Between(MinTime, MaxTime);
+        } else {
+            this.plan.time = time + Phaser.Math.Clamp(approachTime, MinTime, MaxTime);
+        }
+        // Note: should plan to attack neutrals too
         this.plan.target = this.opponentHome;
     }
     updatePlan(time: integer): void {
         if (this.plan.type === PlanType.Wait && this.plan.time < time) {
             this.plan.type = PlanType.Invade;
-            this.plan.time = time + 3*60;  // Temporary hack - enter invade mode for fixed time
+            // Note: this doesn't seem very principled - just attack for N minutes before replanning
+            this.plan.time = time + 3*60;
         }
-        // TODO - use "outnumbered" rather than "timeout" to swap out of "Invade"
         if (this.plan.type === PlanType.Invade && this.plan.time < time) {
             this.replan(time);
         }
