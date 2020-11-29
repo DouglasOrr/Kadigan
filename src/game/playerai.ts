@@ -182,7 +182,7 @@ export class PlayerAI {
             // although we keep wasting money on investment
             this.player.account.spending = 0.5;
         } else if (this.difficulty === Difficulty.Medium) {
-            if (nships < 6) {
+            if (nships < 8) {
                 // Fleet too small
                 this.player.account.spending = 1;
             } else {
@@ -271,7 +271,7 @@ export class PlayerAI {
             const closestEnemy = closest(leader.unit.position, enemies, this.action.patrol);
             // Hard has better micro - attacking from longer range
             const targetRange = (this.difficulty === Difficulty.Hard) ? 0.8 :
-                ((this.difficulty === Difficulty.Medium) ? 0.6 : 0.4);
+                ((this.difficulty === Difficulty.Medium) ? 0.65 : 0.4);
             this.action.patrol = getPointAtDistance(
                 leader.unit.position, closestEnemy, targetRange * objects.LazerRange, closestEnemy);
             return;
