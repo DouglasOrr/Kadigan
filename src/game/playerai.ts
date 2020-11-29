@@ -131,7 +131,8 @@ export class PlayerAI {
             actionStr = `${ActionType[this.action.type]}(${v.x.toFixed(0)}, ${v.y.toFixed(0)})`
         }
         const spending = 100 * this.player.account.spending;
-        const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
+        const breakEven = economy.breakEvenTime(
+            this.player.account.futureCapital(), this.player.account.bonus);
         this.scene.events.emit("aidebugtext", [
             Difficulty[this.difficulty],
             planStr,
@@ -164,7 +165,8 @@ export class PlayerAI {
             return;
         } else if (this.difficulty === Difficulty.Medium) {
             // Build 3 ships, then invest for 60s, then keep spending
-            const investmentStartTime = 2 + 3 * economy.ShipCost / economy.capitalToIncome(0);
+            const investmentStartTime = 2 + 3 * (
+                economy.ShipCost / economy.capitalToIncome(0, this.player.account.bonus));
             if (time < investmentStartTime) {
                 this.player.account.spending = 1;  // build
             } else if (time < investmentStartTime + 60) {
@@ -177,12 +179,14 @@ export class PlayerAI {
             if (this.plan.type === PlanType.Wait) {
                 // Start by building 3 ships, otherwise calculate the break-even time
                 // for the invasion
-                const investmentStartTime = 2 + 3 * economy.ShipCost / economy.capitalToIncome(0);
+                const investmentStartTime = 2 + 3 * (
+                    economy.ShipCost / economy.capitalToIncome(0, this.player.account.bonus));
                 if (time < investmentStartTime) {
                     this.player.account.spending = 1;
                 } else {
                     const timeToInvade = this.plan.time - time;
-                    const breakEven = economy.breakEvenTime(this.player.account.futureCapital());
+                    const breakEven = economy.breakEvenTime(
+                        this.player.account.futureCapital(), this.player.account.bonus);
                     this.player.account.spending = breakEven < timeToInvade ? 0 : 1;
                 }
             } else {

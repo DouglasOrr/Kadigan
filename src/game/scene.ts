@@ -148,8 +148,8 @@ export default class GameScene extends Phaser.Scene {
 
         // Objects
         this.players = [
-            new player.ActivePlayer(this, unitai.PlayerId.Player, playerMoon),
-            new player.ActivePlayer(this, unitai.PlayerId.Enemy, enemyMoon),
+            new player.ActivePlayer(this, unitai.PlayerId.Player, playerMoon, 1),
+            new player.ActivePlayer(this, unitai.PlayerId.Enemy, enemyMoon, this.settings.aibonus),
             ...neutralMoons.map(c => new player.NeutralPlayer(this, c)),
         ];
         this.enemyAi = new playerai.PlayerAI(

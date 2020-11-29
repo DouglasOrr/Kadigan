@@ -211,7 +211,7 @@ class Hud extends Phaser.GameObjects.Container {
         const account = this.player.account;
         const ships = account.production / economy.ShipCost;
         const completeShips = Math.floor(ships);
-        const income = economy.capitalToIncome(account.capital);
+        const income = economy.capitalToIncome(account.capital, account.bonus);
         const shipRate = economy.ShipCost / (income * account.spending);
 
         this.productionBalance.update(ships - completeShips);

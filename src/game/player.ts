@@ -13,10 +13,10 @@ export class ActivePlayer implements Player {
     home: objects.Celestial;
     account: economy.Account;
 
-    constructor(scene: Phaser.Scene, id: integer, home: objects.Celestial) {
+    constructor(scene: Phaser.Scene, id: integer, home: objects.Celestial, bonus: number) {
         this.id = id;
         this.home = home;
-        this.account = new economy.Account();
+        this.account = new economy.Account(bonus);
         for (let i = 0; i < this.home.spawnCount; ++i) {
             this.home.spawn();
         }

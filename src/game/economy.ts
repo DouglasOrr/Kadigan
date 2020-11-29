@@ -6,11 +6,12 @@ export const ShipCost = 8;  // j
 export const NeutralReward = 4; // j
 export const MinIncome = 1; // j/s
 export const MaxIncome = 4; // j/s
-export function capitalToIncome(capital: number): number {
-    return MinIncome + (MaxIncome - MinIncome) * (1 - Math.pow(2, -capital/180));
+export function capitalToIncome(capital: number, bonus: number): number {
+    const base = MinIncome + (MaxIncome - MinIncome) * (1 - Math.pow(2, -capital/180));
+    return bonus * base;
 }
-export function breakEvenTime(capital: number): number {
-    return CapitalDelay + 1 / (capitalToIncome(capital + 1) - capitalToIncome(capital));
+export function breakEvenTime(capital: number, bonus: number): number {
+    return CapitalDelay + 1 / (capitalToIncome(capital + 1, bonus) - capitalToIncome(capital, bonus));
 }
 
 export class Account {
@@ -19,13 +20,15 @@ export class Account {
     hold: boolean;  // (if true don't produce ships, just accrue production balance)
 
     // Attibutes (do not modify outside class)
+    bonus: number;  // - (multiplier for income)
     capital: number;  // j (total realized investment)
     production: number;  // j (current production account balance)
     investments: number[];  // [j]
 
-    constructor() {
+    constructor(bonus: number) {
         this.spending = 0.5;
         this.hold = false;
+        this.bonus = bonus;
         this.capital = 0;
         this.production = 0;
         this.investments = [0];
@@ -40,7 +43,7 @@ export class Account {
             this.capital += this.investments.shift();
         }
         this.investments.push(0);
-        this.addIncome(capitalToIncome(this.capital));
+        this.addIncome(capitalToIncome(this.capital, this.bonus));
 
         if (this.hold) {
             return 0;

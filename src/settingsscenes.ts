@@ -150,7 +150,7 @@ export class LaunchScreen extends Phaser.Scene {
         ]).setValue(this.settings.aidifficulty).on("valuechange", this.toggleDifficulty, this));
 
         const bonusAlternatives = [100, 125, 150, 175, 200, 50, 75].map(percent => {
-            return {value: percent/100, description: `Enemy bonus: ${percent}%`};
+            return {value: percent/100, description: `Enemy income: ${percent}%`};
         });
         this.add.existing(new ToggleText(this, 350, bonusAlternatives)
             .setValue(this.settings.aibonus).on("valuechange", this.toggleBonus, this));
