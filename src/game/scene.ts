@@ -14,7 +14,7 @@ const PanSpeed = 500;  // au/s (at zoom=1)
 const WheelZoom = 1.2;
 const ZoomSpeed = 10;  // /s
 const MinDisplayWidth = 500;  // au
-const MaxDisplayWidth = 10000;  // au
+const MaxDisplayWidth = 20000;  // au
 const FogTextureDownscale = 2;
 const AiUpdateInterval = 0.2; // s
 
@@ -23,19 +23,21 @@ export interface Settings {
     map: string;
     aidifficulty: playerai.Difficulty;
     aibonus: number;
-    pointerPan: boolean;
+    pointerpan: boolean;
     // Dev settings
+    seed?: string;
     fog: boolean;
-    debugAi: boolean;
+    debugai: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
     map: maps.MapList[0].key,
     aidifficulty: playerai.Difficulty.Medium,
     aibonus: 1,
-    pointerPan: false,
+    pointerpan: false,
+    seed: undefined,
     fog: true,
-    debugAi: false,
+    debugai: false,
 };
 
 export function parseSettings(settings: Settings, params: URLSearchParams): void {
@@ -52,14 +54,17 @@ export function parseSettings(settings: Settings, params: URLSearchParams): void
     if (params.has("aibonus")) {
         settings.aibonus = parseFloat(params.get("aibonus"));
     }
+    if (params.has("seed")) {
+        settings.seed = params.get("seed");
+    }
     if (params.has("pointerpan")) {
-        settings.pointerPan = {true: true, false: false}[params.get("pointerpan")];
+        settings.pointerpan = {true: true, false: false}[params.get("pointerpan")];
     }
     if (params.has("fog")) {
         settings.fog = {true: true, false: false}[params.get("fog")];
     }
     if (params.has("debugai")) {
-        settings.debugAi = {true: true, false: false}[params.get("debugai")];
+        settings.debugai = {true: true, false: false}[params.get("debugai")];
     }
 }
 
@@ -96,7 +101,11 @@ export default class GameScene extends Phaser.Scene {
         sound.preload(this.load);
     }
     create(data: Settings): void {
-        this.settings = data;
+        this.settings = {...data};
+        if (this.settings.seed === undefined) {
+            this.settings.seed = (Date.now() * Math.random()).toString();
+            console.log(`Map seed: "${this.settings.seed}"`);
+        }
         this.paused = false;
         this.gameTime = 0;
 
@@ -140,7 +149,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Map
         this.ships = this.add.group({classType: () => new objects.Ship(this, this.map.celestials)});
-        this.map = maps.create(this.settings.map, this, this.ships);
+        this.map = maps.create(this.settings.map, this, this.ships, this.settings.seed);
         // this.map = maps.aiTestDemo(this, this.ships);
         this.map.celestials.forEach(c => {this.add.existing(c);});
         const playerMoon = this.map.celestials.find(c => c.unit.player === unitai.PlayerId.Player);
@@ -155,7 +164,7 @@ export default class GameScene extends Phaser.Scene {
         ];
         this.enemyAi = new playerai.PlayerAI(
             this, <player.ActivePlayer>this.players[1], this.map.celestials,
-            this.settings.aidifficulty, this.settings.debugAi);
+            this.settings.aidifficulty, this.settings.debugai);
         this.commandLines = this.add.group({classType: objects.ShipCommandLine});
         this.lazerLines = this.add.group({classType: objects.ShipLazerLine});
 
@@ -202,7 +211,7 @@ export default class GameScene extends Phaser.Scene {
         this.events.on("conquercelestial", this.onConquerCelestial, this);
         this.events.on("togglemusic", this.playlist.setPlaying, this.playlist);
         this.events.on("togglesounds", this.sounds.setEnabled, this.sounds);
-        this.events.on("togglepointerpan", (value: boolean) => this.settings.pointerPan = value, this);
+        this.events.on("togglepointerpan", (value: boolean) => this.settings.pointerpan = value, this);
         this.events.emit("updatecamera", this.cameras.main);
         this.events.emit("tickeconomy", this.gameTime);
     }
@@ -323,7 +332,7 @@ export default class GameScene extends Phaser.Scene {
         const px = this.input.activePointer.x;
         const py = this.input.activePointer.y;
 
-        const pointerPan = this.settings.pointerPan &&
+        const pointerPan = this.settings.pointerpan &&
             !((px > camera.x + camera.width - this.hudDeadZoneWidth)
               && (py > camera.y + camera.height - this.hudDeadZoneHeight));
 

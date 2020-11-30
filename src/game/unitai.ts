@@ -44,6 +44,14 @@ export enum PlayerId {
     None,
 }
 
+export function getOpponent(player: PlayerId): PlayerId | undefined {
+    if (player === PlayerId.Player) {
+        return PlayerId.Enemy;
+    } else if (player === PlayerId.Enemy) {
+        return PlayerId.Player;
+    }
+}
+
 export interface Celestial {
     position: Vector2;
     velocity: Vector2;
@@ -147,8 +155,8 @@ export function thrust(rotation: number, targetAcceleration: Vector2): number {
     return Math.max(0, rx * targetAcceleration.x + ry * targetAcceleration.y);
 }
 
-export function orbitalRadius(celestial: Celestial): number {
-    return celestial.radius * OrbitRadiusFactor + OrbitRadiusOffset;
+export function orbitalRadius(radius: number): number {
+    return radius * OrbitRadiusFactor + OrbitRadiusOffset;
 }
 
 export enum CommandType {
@@ -225,7 +233,7 @@ export class Commander {
             }
 
         } else if (this.commandType == CommandType.Orbit) {
-            const orbitRadius = orbitalRadius(this.celestial);
+            const orbitRadius = orbitalRadius(this.celestial.radius);
             if (distance < orbitRadius + OrbitThresholdOffset) {
                 if (this.orbitalAngle === undefined) {
                     // A fresh approach - choose a random starting angle

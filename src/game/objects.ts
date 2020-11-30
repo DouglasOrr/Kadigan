@@ -31,16 +31,8 @@ export enum Depth {
     PlayerShip,
 }
 
-function getOpponent(player: unitai.PlayerId): unitai.PlayerId | undefined {
-    if (player === unitai.PlayerId.Player) {
-        return unitai.PlayerId.Enemy;
-    } else if (player === unitai.PlayerId.Enemy) {
-        return unitai.PlayerId.Player;
-    }
-}
-
 export function conquerRadius(celestial: unitai.Celestial): number {
-    return unitai.orbitalRadius(celestial) + unitai.OrbitThresholdOffset
+    return unitai.orbitalRadius(celestial.radius) + unitai.OrbitThresholdOffset
 }
 
 // Ship
@@ -352,7 +344,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
 
         // Conquering indicator
         if (player === unitai.PlayerId.Player || player === unitai.PlayerId.Enemy) {
-            const enemyColor = PlayerColors[getOpponent(player)];
+            const enemyColor = PlayerColors[unitai.getOpponent(player)];
             this.conquerIndicator = this.scene.add.graphics({
                 fillStyle: {color: enemyColor, alpha: 0.35},
             }).setDepth(Depth.ConquerIndicator).setVisible(false);
@@ -433,7 +425,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
                 .fillPath();
         }
         if (this.conquered === ConquerTime) {
-            this.scene.events.emit("conquercelestial", getOpponent(this.unit.player));
+            this.scene.events.emit("conquercelestial", unitai.getOpponent(this.unit.player));
         }
     }
     isBeingConquered(): boolean {
@@ -450,7 +442,7 @@ export class Celestial extends Phaser.GameObjects.Sprite {
     }
     spawn(): void {
         const a = Phaser.Math.PI2 * (Math.random() - .5);
-        const r = unitai.orbitalRadius(this.unit);
+        const r = unitai.orbitalRadius(this.unit.radius);
         const x = this.x + r * Math.cos(a);
         const y = this.y + r * Math.sin(a);
         const ship = <Ship>this.ships.get();

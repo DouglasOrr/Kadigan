@@ -61,7 +61,7 @@ export class NeutralPlayer {
             // Do we need to start the respawn timer?
             const hasNeutral = this.scene.physics.overlapCirc(
                 this.celestial.x, this.celestial.y,
-                unitai.orbitalRadius(this.celestial.unit) + unitai.OrbitThresholdOffset
+                unitai.orbitalRadius(this.celestial.unit.radius) + unitai.OrbitThresholdOffset
             ).some(body => {
                 const ship = <objects.Ship>body.gameObject;
                 return ship.unit.player === unitai.PlayerId.Neutral;
