@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "start": "parcel src/*.html --port 1234 --hmr-port 12345 --out-dir dist_debug",
-    "build": "parcel build src/*.html",
+    "build": "parcel build src/*.html --public-url ./",
     "tsc": "tsc --noEmit",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
