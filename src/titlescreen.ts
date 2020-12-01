@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import * as game from "./game/scene";
+import * as unitai from "./game/unitai";
 
 function getScript() {
     const hour = new Date().getHours();
@@ -21,14 +22,14 @@ function switchToScene(scene: Phaser.Scene, params: URLSearchParams) {
         data: undefined,
         duration: 0,
     };
+    const settings = {...game.DEFAULT_SETTINGS};
+    game.parseSettings(settings, params);
     if (config.target === "game") {
-        const settings = {...game.DEFAULT_SETTINGS};
-        game.parseSettings(settings, params);
         config.data = settings;
 
     } else if (config.target === "end") {
-        const winner = params.has("winner") ? parseInt(params.get("winner")) : 0;
-        config.data = {winner: winner};
+        const winner = params.has("winner") ? parseInt(params.get("winner")) : unitai.PlayerId.None;
+        config.data = {winner: winner, settings: settings};
 
     } else if (config.target in {starfield: 0, shadertest: 0, launch: 0, ingameoptions: 0}) {
         // No options

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import * as unitai from "./game/unitai";
 import * as game from "./game/scene";
 import * as playerai from "./game/playerai";
 import * as maps from "./game/maps";
@@ -100,10 +101,11 @@ class TranslucentBackground extends Phaser.GameObjects.Rectangle {
 }
 
 class CenterText extends Phaser.GameObjects.Text {
-    constructor(scene: Phaser.Scene, y: number, text: string) {
+    constructor(scene: Phaser.Scene, y: number, text: string, size?: integer) {
         super(scene, scene.cameras.main.width/2, y, text, FONT_SETTINGS);
+        this.setAlign("center");
         this.setOrigin(0.5, 0);
-        this.setFontSize(40);
+        this.setFontSize(size || 40);
         scene.scale.on("resize", () => {
             this.x = this.scene.cameras.main.width/2;
         });
@@ -224,25 +226,34 @@ export class InGameOptionsScene extends Phaser.Scene {
     }
 }
 
+function gameDescription(settings: game.Settings): string {
+    const bonus = "+".repeat(Math.max(0, (settings.aibonus - 1) * 4));
+    const penalty = "-".repeat(Math.max(0, (1 - settings.aibonus) * 4));
+    const mapName = maps.MapList.find(map => map.key === settings.map).name;
+    return `${mapName}:${playerai.Difficulty[settings.aidifficulty]}${bonus}${penalty}`;
+}
+
 export class EndScene extends Phaser.Scene {
     constructor() {
         super("end");
     }
-    create(data: {winner: number}): void {
+    create(data: game.Outcome): void {
         let outcome = "Draw.";
         let outcomeFadeDuration = 1000;
-        if (data.winner === 1) {
+        if (data.winner === unitai.PlayerId.Player) {
             outcome = "Victory.";
             outcomeFadeDuration = 500;
         }
-        if (data.winner === -1) {
+        if (data.winner === unitai.PlayerId.Enemy) {
             outcome = "Defeat.";
             outcomeFadeDuration = 3000;
         }
+        const description = gameDescription(data.settings);
 
         // Create layout
         const background = this.add.existing(new TranslucentBackground(this, 0.5).setAlpha(0));
         const text = this.add.existing(new CenterText(this, 100, outcome).setAlpha(0));
+        const subtext = this.add.existing(new CenterText(this, 160, `[${description}]`, 20).setAlpha(0));
         const newGame = this.add.existing(new NewGameLinkText(this, 250).setAlpha(0));
 
         // Animate
@@ -254,16 +265,16 @@ export class EndScene extends Phaser.Scene {
                 ease: "Power1",
             })
             .add({
-                targets: text,
+                targets: [text, subtext],
                 alpha: {from: 0, to: 1},
                 duration: outcomeFadeDuration,
                 ease: "Power2",
             })
             .add({
                 targets: newGame,
-                delay: 1000,
+                delay: 250,
                 alpha: {from: 0, to: 1},
-                duration: 500,
+                duration: 250,
                 ease: "Power2",
             })
             .play();

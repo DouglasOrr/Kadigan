@@ -4,7 +4,7 @@ import GameScene from "./game/scene";
 import HudScene from "./game/hudscene";
 import StarfieldScene from "./starfieldscene";
 import ShaderTestScreen from "./shadertestscreen";
-import * as settingsscenes from "./settingsscenes";
+import * as settingsscenes from "./optionscreens";
 import * as unitai from "./game/unitai";
 
 const Config = {

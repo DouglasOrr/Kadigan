@@ -68,6 +68,11 @@ export function parseSettings(settings: Settings, params: URLSearchParams): void
     }
 }
 
+export interface Outcome {
+    winner: unitai.PlayerId;
+    settings: Settings;
+}
+
 export default class GameScene extends Phaser.Scene {
     settings: Settings;
     paused: boolean;
@@ -317,7 +322,7 @@ export default class GameScene extends Phaser.Scene {
         }
     }
     onConquerCelestial(winner: unitai.PlayerId): void {
-        this.scene.manager.start("end", {winner: winner === unitai.PlayerId.Player ? 1 : -1});
+        this.scene.manager.start("end", {winner: winner, settings: this.settings});
         this.scene.setActive(false);
     }
     changeZoom(delta: number): void {
@@ -439,6 +444,7 @@ export default class GameScene extends Phaser.Scene {
             const selectedCelstial = this.map.celestials.find((c) =>
                 Phaser.Math.Distance.Between(c.x, c.y, pointer.worldX, pointer.worldY) < c.unit.radius
             );
+            let commandGiven = false;
             this.ships.children.iterate((ship: objects.Ship) => {
                 if (ship.active && ship.selected) {
                     if (selectedCelstial !== undefined) {
@@ -446,9 +452,12 @@ export default class GameScene extends Phaser.Scene {
                     } else {
                         ship.commander.patrol(pointer.worldX, pointer.worldY);
                     }
+                    commandGiven = true;
                 }
             });
-            this.events.emit("playercommand");
+            if (commandGiven) {
+                this.events.emit("playercommand");
+            }
         }
     }
     onPointerWheel(pointer: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number): void {
