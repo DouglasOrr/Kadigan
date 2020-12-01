@@ -35,6 +35,7 @@ git diff --cached -- ':!package-lock.json'
 ## Releasing
 
 ```
+rm -r dist
 ./run npm run build
 cd dist && zip -r "../releases/Kadigan_$(date --iso)-v0.zip" .
 ```
