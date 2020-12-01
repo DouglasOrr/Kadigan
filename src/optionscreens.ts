@@ -142,8 +142,8 @@ export class LaunchScreen extends Phaser.Scene {
 
         this.add.existing(new LinkText(this, 150, "Start Game")
             .on("click", this.clickStartGame, this));
-        this.add.existing(new OpenInNewTabLinkText(this, 190, "Help", "/help.html"));
-        this.add.existing(new OpenInNewTabLinkText(this, 230, "Credits", "/credits.html"));
+        this.add.existing(new OpenInNewTabLinkText(this, 190, "Help", "help.html"));
+        this.add.existing(new OpenInNewTabLinkText(this, 230, "Credits", "credits.html"));
 
         this.add.existing(new ToggleText(this, 310, [
             {value: playerai.Difficulty.Medium, description: "Enemy AI: Medium"},
@@ -194,7 +194,7 @@ export class InGameOptionsScene extends Phaser.Scene {
         this.add.existing(new LinkText(this, 150, "Resume")
             .on("click", this.clickResumeGame, this));
         this.add.existing(new NewGameLinkText(this, 190));
-        this.add.existing(new OpenInNewTabLinkText(this, 230, "Help", "/help.html"));
+        this.add.existing(new OpenInNewTabLinkText(this, 230, "Help", "help.html"));
         this.add.existing(new ToggleText(this, 310, [
             {value: true, description: "Music: On"},
             {value: false, description: "Music: Off"},
