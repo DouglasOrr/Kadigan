@@ -258,10 +258,10 @@ export default class HudScene extends Phaser.Scene {
         super("hud");
     }
     preload(): void {
-        this.load.image("hud", "/assets/hud0.png");
-        this.load.image("slider", "/assets/slider0.png");
-        this.load.spritesheet("ship", "/assets/ship0.png", {frameWidth: 64});
-        this.load.bitmapFont("dimbo", "/assets/dimbo_0.png", "/assets/dimbo.xml");
+        this.load.image("hud", "assets/hud0.png");
+        this.load.image("slider", "assets/slider0.png");
+        this.load.spritesheet("ship", "assets/ship0.png", {frameWidth: 64});
+        this.load.bitmapFont("dimbo", "assets/dimbo_0.png", "assets/dimbo.xml");
     }
     create(data: {player: player.ActivePlayer}): void {
         this.input.manager.globalTopOnly = false;

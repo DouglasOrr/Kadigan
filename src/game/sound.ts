@@ -3,14 +3,14 @@ import * as objects from "./objects";
 import * as unitai from "./unitai";
 
 export function preload(loader: Phaser.Loader.LoaderPlugin): void {
-    loader.audio("lazer_low", "/assets/lazer_low.mp3");
-    loader.audio("lazer_mid", "/assets/lazer_mid.mp3");
-    loader.audio("lazer_high", "/assets/lazer_high.mp3");
-    loader.audio("pop", "/assets/pop0.mp3");
-    loader.audio("bleep", "/assets/bleep0.mp3");
-    loader.audio("music0", "/assets/music0.mp3");
-    loader.audio("music1", "/assets/music1.mp3");
-    loader.audio("music2", "/assets/music2.mp3");
+    loader.audio("lazer_low", "assets/lazer_low.mp3");
+    loader.audio("lazer_mid", "assets/lazer_mid.mp3");
+    loader.audio("lazer_high", "assets/lazer_high.mp3");
+    loader.audio("pop", "assets/pop0.mp3");
+    loader.audio("bleep", "assets/bleep0.mp3");
+    loader.audio("music0", "assets/music0.mp3");
+    loader.audio("music1", "assets/music1.mp3");
+    loader.audio("music2", "assets/music2.mp3");
 }
 
 export class Sounds {

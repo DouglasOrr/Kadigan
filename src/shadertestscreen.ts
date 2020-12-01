@@ -5,9 +5,9 @@ export default class ShaderTestScreen extends Phaser.Scene {
         super("shadertest");
     }
     preload(): void {
-        this.load.image("ship", "/assets/ship0.png");
-        this.load.glsl("radial", "/assets/radial.frag");
-        // this.load.glsl("greenscreen", "/assets/greenscreen.frag");
+        this.load.image("ship", "assets/ship0.png");
+        this.load.glsl("radial", "assets/radial.frag");
+        // this.load.glsl("greenscreen", "assets/greenscreen.frag");
     }
     create(): void {
         this.add.text(10, 10, "Shader test.").setOrigin(0, 0).setFontSize(20);
