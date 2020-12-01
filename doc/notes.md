@@ -13,3 +13,7 @@
 
  - VSCode extension "GLSL Lint"
  - `apt install glslang-tools`
+
+## Releasing
+
+Run `./run release` and find the zipped bundle in `release/`.

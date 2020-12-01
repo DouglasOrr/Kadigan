@@ -6,7 +6,7 @@ Kadigan is a single-player RTS set in a dynamic world.
 
 ## Getting started
 
-To host the dev server at http://localhost:1234/index.html?scene=game&fog=false&debugai=true&aidifficulty=medium&map=std
+You can either use `npm` directly, or through the wrapper script `run` which just runs everything through a Docker image. To host the dev server at http://localhost:1234/index.html?scene=game&fog=false&debugai=true&aidifficulty=medium&map=std
 
 ```bash
 ./run build
@@ -26,12 +26,7 @@ This might also be useful sometimes:
 git diff --cached -- ':!package-lock.json'
 ```
 
-## References
+## Reference
 
  - [Phaser API docs](https://photonstorm.github.io/phaser3-docs/)
- - [Jest API docs](https://jestjs.io/docs/en/api)
  - [How to Really Make a Phaser Game from Scratch](https://www.youtube.com/watch?v=yo40OaolRs8)
-
-## Releasing
-
-Run `./run release` and find the zipped bundle in `release/`.
