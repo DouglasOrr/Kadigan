@@ -282,7 +282,7 @@ export const MapList = [
     {name: "Random", key: "rand", generator: randomMap},
     {name: "Standard", key: "std", generator: twoPlanetsDemo},
     {name: "Head to Head", key: "h2h", generator: aiTestDemo},
-    {name: "Single planet", key: "one", generator: originalDemo},
+    {name: "One planet", key: "one", generator: originalDemo},
 ];
 
 export function create(key: string, scene: Phaser.Scene, ships: Phaser.GameObjects.Group, seed: string): Map {
