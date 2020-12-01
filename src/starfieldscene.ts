@@ -21,7 +21,9 @@ export default class StarfieldScene extends Phaser.Scene {
         }
         tex.draw(stars);
         this.updateCamera(this.cameras.main);
-        foreground.events.on("updatecamera", this.updateCamera, this);
+        if (foreground.events !== undefined) {
+            foreground.events.on("updatecamera", this.updateCamera, this);
+        }
     }
     updateCamera(gameCamera: Phaser.Cameras.Scene2D.Camera): void {
         const camera = this.cameras.main;
